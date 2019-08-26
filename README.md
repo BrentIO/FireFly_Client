@@ -282,7 +282,7 @@ Post to topic: `/buttons/LIVING_ROOM_1`
 ```
 
 
-**Set brightness level 70% for LIVING_ROOM_1:**
+**Set brightness level to 70% for LIVING_ROOM_1:**
 Post to topic: `/buttons/LIVING_ROOM_1`
 ```
 {
