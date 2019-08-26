@@ -84,7 +84,7 @@ const int STYLE_NORMAL = 0;
 const int STYLE_BLINK = 1;
 const int STYLE_SNORE = 2;
 
-const int EEPROMLength = 4096;
+const int EEPROMLength = 4000;
 const int EEPROMDataBegin = 10; //Reserving the first 10 addresses for provision statuses
 
 const unsigned long healthUpdateEveryMilliseconds = 1680000; //Every 28 minutes
@@ -416,7 +416,7 @@ void handleEventTopic(String topic, String payload){
   /* Handles all of the business logic */
 
   //Create a jsonDocument object to deserialize into
-  DynamicJsonDocument jsonDoc(4096);
+  DynamicJsonDocument jsonDoc(EEPROMLength);
 
   //Deserialize the response
   auto jsonParseError = deserializeJson(jsonDoc, payload);
@@ -1040,7 +1040,7 @@ String EEPROMRead(int startPosition){
 void readEEPROMToRAM(){
 
   //Create a jsonDocument object to deserialize into
-  DynamicJsonDocument jsonDoc(4096);
+  DynamicJsonDocument jsonDoc(EEPROMLength);
 
   //Deserialize the response
   auto jsonParseError = deserializeJson(jsonDoc, EEPROMRead(EEPROMDataBegin));
@@ -1368,7 +1368,7 @@ void checkBootstrapUpgrade(){
     httpClient.end();
     
     //Create a jsonDocument object to deserialize into
-    DynamicJsonDocument jsonDoc(4096);
+    DynamicJsonDocument jsonDoc(EEPROMLength);
 
     //Deserialize the response
     auto jsonParseError = deserializeJson(jsonDoc, jsonServerResponse);
@@ -1446,7 +1446,7 @@ void checkFirmwareUpgrade(){
     String jsonServerResponse = httpClient.getString();
     
     //Create a jsonDocument object to deserialize into
-    StaticJsonDocument<4096> jsonDoc;
+    StaticJsonDocument<EEPROMLength> jsonDoc;
 
     //Deserialize the response
     auto jsonParseError = deserializeJson(jsonDoc, jsonServerResponse);
