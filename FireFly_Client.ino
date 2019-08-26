@@ -1087,6 +1087,11 @@ void readEEPROMToRAM(){
   //Set the array size
   countOfLEDs = jsonDoc["buttons"].size();
 
+  //Only allow up to 6 LEDs
+  if(countOfLEDs > 6){
+    countOfLEDs = 6;
+  }
+
   //Get the data for each button defined
   for(int i=0; i < countOfLEDs; i++){
 
@@ -1096,6 +1101,11 @@ void readEEPROMToRAM(){
 
     //Set the number of defined intensities
     leds[i].countOfDefinedIntensity = jsonDoc["buttons"][i]["led"]["intensity"].size();
+
+    //Only allow up to 8 defined intensities
+    if(leds[i].countOfDefinedIntensity > 8){
+      leds[i].countOfDefinedIntensity = 8;
+    }
 
     for(int j=0; j < leds[i].countOfDefinedIntensity; j++){
 
