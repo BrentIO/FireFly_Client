@@ -1066,9 +1066,9 @@ void readEEPROMToRAM(){
   settings.mqttServer.username = jsonDoc["mqtt"]["username"].as<String>();
   settings.mqttServer.password = jsonDoc["mqtt"]["password"].as<String>();
 
-  settings.mqttServer.manageTopic = jsonDoc["mqtt"]["subscriptions"]["management"].as<String>();
-  settings.mqttServer.clientTopic = jsonDoc["mqtt"]["subscriptions"]["client"].as<String>();
-  settings.mqttServer.eventTopic = jsonDoc["mqtt"]["subscriptions"]["event"].as<String>();
+  settings.mqttServer.manageTopic = jsonDoc["mqtt"]["topics"]["management"].as<String>();
+  settings.mqttServer.clientTopic = jsonDoc["mqtt"]["topics"]["client"].as<String>();
+  settings.mqttServer.eventTopic = jsonDoc["mqtt"]["topics"]["event"].as<String>();
 
   settings.firmware.url = jsonDoc["firmware"]["url"].as<String>();
   settings.firmware.refreshMilliseconds = jsonDoc["firmware"]["refreshMilliseconds"];
