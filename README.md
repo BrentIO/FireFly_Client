@@ -244,7 +244,7 @@ http://server/FireFly/firmware/A1B2C3D4E5F6.json
 ```
 
 ## Health and Status
-FireFly will send both solicited and unsolicited health status messages on the `clientTopic`.  See MQTT Topics for more information.
+FireFly will send both solicited and unsolicited health status messages on the `client` topic.  See MQTT Topics for more information.
 
 ## MQTT Topics
 ### Requests
