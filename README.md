@@ -10,15 +10,15 @@ This project was inspired by [Jonathan Oxer's SuperHouseTV](https://www.superhou
 
 ## Hardware
 FireFly Client uses a NodeMCU over WiFi and supports up to 6 buttons being controlled.  An additional pin is used for resetting the controller to defaults.
-|FireFly Client Port|Arduino Pin|
-|--|--|
-|A|D1|
-|B|D2|
-|C|D3<sup>1</sup>|
-|D|D5|
-|E|D6|
-|F|D7|
-|Reset|SK <sup>2</sup>|
+| FireFly Client Port | Arduino Pin |
+| -- | --| 
+| A | D1 |
+| B | D2 |
+| C | D3<sup>1</sup> |
+| D | D5 |
+| E | D6 |
+| F | D7 |
+| Reset | SK <sup>2</sup> |
 
 <sup>1</sup> This pin is high on boot and may cause the LED to be slightly illuminated before the controller is fully loaded.
 <sup>2</sup> To reset to provisioning mode, short SK to ground.
