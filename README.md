@@ -22,6 +22,7 @@ FireFly Client uses a NodeMCU over WiFi and supports up to 6 buttons being contr
 | Reset | SK <sup>2</sup> | 
 
 <sup>1</sup> This pin is high on boot and may cause the LED to be slightly illuminated before the controller is fully loaded.
+
 <sup>2</sup> To reset to provisioning mode, short SK to ground.
 
 ## Reset to Defaults
