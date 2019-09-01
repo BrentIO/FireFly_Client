@@ -335,7 +335,7 @@ Post to topic: `/buttons/global`
 Post to topic: `/buttons/global`
 ```
 {
-    "type": "COLOR_NUMERIC",
+    "type": "COLOR_NAMED",
     "value": "DAYTIME",
     "actor": "GREEN"
 }
