@@ -346,7 +346,7 @@ void handleMQTTMessageReceived(String topic, String payload) {
 
     turnOffAllLEDs();
 
-    publishMQTT(settings.mqttServer.clientTopic + "/status", "Restarting");
+    publishMQTT(settings.mqttServer.clientTopic + "/status", F("Restarting"));
 
     delay(500);
 
@@ -429,35 +429,35 @@ void handleEventTopic(String topic, String payload) {
         }
       }
 
-      if (payload == "MINIMUM" || payload == "MAXIMUM") {
+      if (payload == F("MINIMUM") || payload == F("MAXIMUM")) {
 
         //Remember the current illumination value
         leds[i].styleData = leds[i].illumination;
 
-        setBrightness(&leds[i], "OFF");
+        setBrightness(&leds[i], F("OFF"));
 
         delay(100);
 
         //Use the default
-        setBrightness(&leds[i], "MAXIMUM");
+        setBrightness(&leds[i], F("MAXIMUM"));
 
         delay(100);
 
-        setBrightness(&leds[i], "OFF");
-
-        delay(100);
-
-        //Use the default
-        setBrightness(&leds[i], "MAXIMUM");
-
-        delay(100);
-
-        setBrightness(&leds[i], "OFF");
+        setBrightness(&leds[i], F("OFF"));
 
         delay(100);
 
         //Use the default
-        setBrightness(&leds[i], "MAXIMUM");
+        setBrightness(&leds[i], F("MAXIMUM"));
+
+        delay(100);
+
+        setBrightness(&leds[i], F("OFF"));
+
+        delay(100);
+
+        //Use the default
+        setBrightness(&leds[i], F("MAXIMUM"));
 
         delay(100);
 
@@ -507,16 +507,16 @@ void handleGlobalEventTopic(String topic, String payload) {
       if (leds[i].alias == messageActor) {
 
         //See if we are opening or closing
-        if (messageValue == "CLOSED") {
+        if (messageValue == F("CLOSED")) {
 
           //Remember the current illumination value
           leds[i].styleData = leds[i].illumination;
 
           //Set the illumination to OFF
-          setBrightness(&leds[i], "OFF");
+          setBrightness(&leds[i], F("OFF"));
         }
 
-        if (messageValue == "OPEN") {
+        if (messageValue == F("OPEN")) {
 
           if (leds[i].styleData != 0) {
 
@@ -526,7 +526,7 @@ void handleGlobalEventTopic(String topic, String payload) {
           } else {
 
             //Use the default
-            setBrightness(&leds[i], "DEFAULT");
+            setBrightness(&leds[i], F("DEFAULT"));
 
           }
         }
@@ -534,7 +534,7 @@ void handleGlobalEventTopic(String topic, String payload) {
     }
   }
 
-  if (messageType == "BUTTON_NUMERIC") {
+  if (messageType == F("BUTTON_NUMERIC")) {
 
     //Find the button
     for (int i = 0; i < countOfLEDs; i++) {
@@ -557,7 +557,7 @@ void handleGlobalEventTopic(String topic, String payload) {
     }
   }
 
-  if (messageType == "BUTTON_NAMED") {
+  if (messageType == F("BUTTON_NAMED")) {
 
     //Find the button
     for (int i = 0; i < countOfLEDs; i++) {
@@ -580,7 +580,7 @@ void handleGlobalEventTopic(String topic, String payload) {
     }
   }
 
-  if (messageType == "BUTTON_BLINK") {
+  if (messageType == F("BUTTON_BLINK")) {
 
     //Find the button
     for (int i = 0; i < countOfLEDs; i++) {
@@ -606,7 +606,7 @@ void handleGlobalEventTopic(String topic, String payload) {
     }
   }
 
-  if (messageType == "BUTTON_SNORE") {
+  if (messageType == F("BUTTON_SNORE")) {
 
     //Find the button
     for (int i = 0; i < countOfLEDs; i++) {
@@ -623,14 +623,14 @@ void handleGlobalEventTopic(String topic, String payload) {
           leds[i].style = STYLE_NORMAL;
 
           //Set the brightness to the default
-          setBrightness(&leds[i], "DEFAULT");
+          setBrightness(&leds[i], F("DEFAULT"));
 
         }
       }
     }
   }
 
-  if (messageType == "COLOR_NUMERIC") {
+  if (messageType == F("COLOR_NUMERIC")) {
 
     //Find the button
     for (int i = 0; i < countOfLEDs; i++) {
@@ -653,7 +653,7 @@ void handleGlobalEventTopic(String topic, String payload) {
     }
   }
 
-  if (messageType == "COLOR_NAMED") {
+  if (messageType == F("COLOR_NAMED")) {
 
     //Find the button
     for (int i = 0; i < countOfLEDs; i++) {
@@ -676,7 +676,7 @@ void handleGlobalEventTopic(String topic, String payload) {
     }
   }
 
-  if (messageType == "COLOR_BLINK") {
+  if (messageType == F("COLOR_BLINK")) {
 
     //Find the button
     for (int i = 0; i < countOfLEDs; i++) {
@@ -704,7 +704,7 @@ void handleGlobalEventTopic(String topic, String payload) {
     }
   }
 
-  if (messageType == "COLOR_SNORE") {
+  if (messageType == F("COLOR_SNORE")) {
 
     //Find the button
     for (int i = 0; i < countOfLEDs; i++) {
@@ -721,14 +721,14 @@ void handleGlobalEventTopic(String topic, String payload) {
           leds[i].style = STYLE_NORMAL;
 
           //Set the brightness to the default
-          setBrightness(&leds[i], "DEFAULT");
+          setBrightness(&leds[i], F("DEFAULT"));
 
         }
       }
     }
   }
 
-  if (messageType == "GLOBAL_NUMERIC") {
+  if (messageType == F("GLOBAL_NUMERIC")) {
 
     //Iterate through the buttons
     for (int i = 0; i < countOfLEDs; i++) {
@@ -748,7 +748,7 @@ void handleGlobalEventTopic(String topic, String payload) {
     }
   }
 
-  if (messageType == "GLOBAL_NAMED") {
+  if (messageType == F("GLOBAL_NAMED")) {
     //Iterate through the buttons
     for (int i = 0; i < countOfLEDs; i++) {
 
@@ -768,7 +768,7 @@ void handleGlobalEventTopic(String topic, String payload) {
 
   }
 
-  if (messageType == "GLOBAL_BLINK") {
+  if (messageType == F("GLOBAL_BLINK")) {
 
     //Find the button
     for (int i = 0; i < countOfLEDs; i++) {
@@ -791,7 +791,7 @@ void handleGlobalEventTopic(String topic, String payload) {
     }
   }
 
-  if (messageType == "GLOBAL_SNORE") {
+  if (messageType == F("GLOBAL_SNORE")) {
 
     //Find the button
     for (int i = 0; i < countOfLEDs; i++) {
@@ -806,7 +806,7 @@ void handleGlobalEventTopic(String topic, String payload) {
         leds[i].style = STYLE_NORMAL;
 
         //Set the brightness to the default
-        setBrightness(&leds[i], "DEFAULT");
+        setBrightness(&leds[i], F("DEFAULT"));
 
       }
     }
@@ -827,7 +827,7 @@ void reconnectMQTT() {
       restoreAllLEDs();
 
       // Publish an announcement on the client topic
-      publishMQTT(settings.mqttServer.clientTopic + "/status", "Started");
+      publishMQTT(settings.mqttServer.clientTopic + "/status", F("Started"));
 
       //Send the health event
       handleHealth();
@@ -972,7 +972,7 @@ void setupLEDs(void) {
     //Set the pin for output
     pinMode(leds[i].pin, OUTPUT);
 
-    setBrightness(&leds[i], "DEFAULT");
+    setBrightness(&leds[i], F("DEFAULT"));
 
   }
 }
@@ -1206,44 +1206,52 @@ void handleHealth() {
 String getContentType(String filename) {
 
   //Returns the content type for the given file
-  if (filename.endsWith(".html")){
-    return "text/html";
+  if (filename.endsWith(F(".html"))){
+    return F("text/html");
   }
 
-  if (filename.endsWith(".css")){
-    return "text/css";
+  if (filename.endsWith(F(".css"))){
+    return F("text/css");
   }
 
-  if (filename.endsWith(".js")){
-    return "application/javascript";
+  if (filename.endsWith(F(".js"))){
+    return F("application/javascript");
+  } 
+
+  if (filename.endsWith(F(".gz"))){
+    return F("application/x-gzip");
   } 
 
   //Not a recognized format, assume plain text
-  return "text/plain";
+  return F("text/plain");
 }
 
 void handleWebGet(String uri){
 
   //Return the device name if requested
-  if(uri == "/api/deviceName"){
-    webServer.send(200,"application/json","{\"deviceName\":\"" + settings.deviceName + "\"}");
+  if(uri == F("/api/deviceName")){
+    webServer.send(200,F("application/json"),"{\"deviceName\":\"" + settings.deviceName + "\"}");
     return;
   }
 
   //Return the firmware version if requested
-  if(uri == "/api/firmwareVersion"){
-    webServer.send(200,"application/json","{\"firmwareVersion\":\"" + (String)firmwareVersion + "\"}");
+  if(uri == F("/api/firmwareVersion")){
+    webServer.send(200,F("application/json"),"{\"firmwareVersion\":\"" + (String)firmwareVersion + "\"}");
     return;
   }
 
   //If not file is requested, send index.html
   if (uri.endsWith("/")) uri += "index.html";
+
+  String contentType = getContentType(uri);
+
+  //See if there is a gz version
+  if(SPIFFS.exists(uri + ".gz")) {
+    uri = uri + ".gz";
+  }
   
   //Attempt to get the file from SPIFFS
   if (SPIFFS.exists(uri)) {
-
-    //File exists, set the content type
-    String contentType = getContentType(uri);
 
     //Read the data from the file and send it to the web client
     File file = SPIFFS.open(uri, "r");
@@ -1513,7 +1521,7 @@ void checkBootstrapUpgrade() {
     //Make sure we got a valid version number
     if (remoteVersion == 0) {
 
-      publishMQTT(settings.mqttServer.clientTopic + "/status", "Invalid Remote Bootstrap Version");
+      publishMQTT(settings.mqttServer.clientTopic + "/status", F("Invalid Remote Bootstrap Version"));
 
       //Mark the check as handled
       settings.bootstrap.lastHandled = millis();
@@ -1524,21 +1532,21 @@ void checkBootstrapUpgrade() {
     //Check if the version requested is not the same as the one loaded (yes, we allow back flashing)
     if (settings.bootstrap.version != remoteVersion) {
 
-      publishMQTT(settings.mqttServer.clientTopic + "/status", "Updating Bootstrap");
+      publishMQTT(settings.mqttServer.clientTopic + "/status", F("Updating Bootstrap"));
 
       //Get the new bootstrap
       if (retrieveBootstrap(settings.bootstrap.url) == true) {
 
-        publishMQTT(settings.mqttServer.clientTopic + "/status", "Bootstrap Updated Successfully");
+        publishMQTT(settings.mqttServer.clientTopic + "/status", F("Bootstrap Updated Successfully"));
 
       } else {
-        publishMQTT(settings.mqttServer.clientTopic + "/status", "Bootstrap Update Failed");
+        publishMQTT(settings.mqttServer.clientTopic + "/status", F("Bootstrap Update Failed"));
       }
 
     }
   }
   else {
-    publishMQTT(settings.mqttServer.clientTopic + "/status", "Bootstrap Update Failed");
+    publishMQTT(settings.mqttServer.clientTopic + "/status", F("Bootstrap Update Failed"));
   }
 
   //Mark the check as handled
@@ -1576,16 +1584,16 @@ void checkFirmwareUpgrade() {
 
     //Check if the version requested is not the same as the one loaded (yes, we allow back flashing)
     if ( (String)newFirmwareVersion != (String)firmwareVersion ) {
-      publishMQTT(settings.mqttServer.clientTopic + "/firmwareUpdate", "Updating");
-      publishMQTT(settings.mqttServer.clientTopic + "/status", "Updating Firmware");
+      publishMQTT(settings.mqttServer.clientTopic + "/firmwareUpdate", F("Updating"));
+      publishMQTT(settings.mqttServer.clientTopic + "/status", F("Updating Firmware"));
 
       //Attempt to retrieve the firmware and perform the update
       t_httpUpdate_return firmwareUpdateResponse = ESPhttpUpdate.update(firmwareBinURL);
 
       switch (firmwareUpdateResponse) {
         case HTTP_UPDATE_FAILED:
-          publishMQTT(settings.mqttServer.clientTopic + "/firmwareUpdate", "Failed");
-          publishMQTT(settings.mqttServer.clientTopic + "/status", "Firmware Update Failed");
+          publishMQTT(settings.mqttServer.clientTopic + "/firmwareUpdate", F("Failed"));
+          publishMQTT(settings.mqttServer.clientTopic + "/status", F("Firmware Update Failed"));
           publishMQTT(settings.mqttServer.clientTopic + "/firmware", (String)firmwareVersion);
           break;
 
@@ -1598,8 +1606,8 @@ void checkFirmwareUpgrade() {
     }
   }
   else {
-    publishMQTT(settings.mqttServer.clientTopic + "/firmwareUpdate", "Failed");
-    publishMQTT(settings.mqttServer.clientTopic + "/status", "Firmware Update Failed");
+    publishMQTT(settings.mqttServer.clientTopic + "/firmwareUpdate", F("Failed"));
+    publishMQTT(settings.mqttServer.clientTopic + "/status", F("Firmware Update Failed"));
     publishMQTT(settings.mqttServer.clientTopic + "/firmware", (String)firmwareVersion);
   }
 
@@ -1666,27 +1674,27 @@ int enumPorts(String portName) {
   //Remove case sensitivity
   portName.toUpperCase();
 
-  if (portName == "PORT_A") {
+  if (portName == F("PORT_A")) {
     return PORT_A;
   };
 
-  if (portName == "PORT_B") {
+  if (portName == F("PORT_B")) {
     return PORT_B;
   };
 
-  if (portName == "PORT_C") {
+  if (portName == F("PORT_C")) {
     return PORT_C;
   };
 
-  if (portName == "PORT_D") {
+  if (portName == F("PORT_D")) {
     return PORT_D;
   };
 
-  if (portName == "PORT_E") {
+  if (portName == F("PORT_E")) {
     return PORT_E;
   };
 
-  if (portName == "PORT_F") {
+  if (portName == F("PORT_F")) {
     return PORT_F;
   };
 
@@ -1699,25 +1707,25 @@ String enumPorts(int port) {
   switch (port) {
 
     case PORT_A:
-      return "PORT_A";
+      return F("PORT_A");
       break;
     case PORT_B:
-      return "PORT_B";
+      return F("PORT_B");
       break;
     case PORT_C:
-      return "PORT_C";
+      return F("PORT_C");
       break;
     case PORT_D:
-      return "PORT_D";
+      return F("PORT_D");
       break;
     case PORT_E:
-      return "PORT_E";
+      return F("PORT_E");
       break;
     case PORT_F:
-      return "PORT_F";
+      return F("PORT_F");
       break;
     default:
-      return "UNKNOWN";
+      return F("UNKNOWN");
       break;
   }
 }
