@@ -12,7 +12,7 @@
 
             $(document).ready(function(){
 
-                //Get the bootstrap from the server
+                //Get the device name from the client
                 $.ajax({
 
                     type: 'GET',
@@ -21,18 +21,22 @@
                     success: function(data) {
 
                         deviceName = data['deviceName'];
-                        setDeviceName();
-
                     },
 
                     error: function(data){
-                        alert("Error: Unable to retrieve device name from switch.");
-                        console.log(data);
+                        document.getElementById("submitButton").disabled = true;
+                        document.getElementById("errorMessage").style.display = 'block';
+                        document.getElementById("errorMessage").innerHTML = "Unable to retrieve device name.<br>";
+                        deviceName = ""
+                    },
+
+                    complete: function(){
+                        setDeviceName();
                     }
 
                 });
 
-                //Get the bootstrap from the server
+                //Get the firmware from the client
                 $.ajax({
 
                     type: 'GET',
@@ -46,8 +50,14 @@
                     },
 
                     error: function(data){
-                        alert("Error: Unable to retrieve firmware version from switch.");
-                        console.log(data);
+                        document.getElementById("submitButton").disabled = true;
+                        document.getElementById("errorMessage").style.display = 'block';
+                        document.getElementById("errorMessage").innerHTML = document.getElementById("errorMessage").innerHTML + "Unable to retrieve firmware version.<br>";
+                        firmwareVersion = "0"
+                    },
+
+                    complete: function(){
+                        setFirmwareVersion();
                     }
 
                 });
@@ -77,9 +87,12 @@
                 value = value.replace("http://", "");
                 value = value.replace("/", "");
                 baseURL = baseURL.replace("$SERVERNAME$", value);
-                baseURL = baseURL.replace("$DEVICENAME$", deviceName);
 
-                document.getElementById("bootstrapURL").value = baseURL
+                if(deviceName != ""){
+                    baseURL = baseURL.replace("$DEVICENAME$", deviceName);
+                }
+                
+                document.getElementById("bootstrapURL").value = baseURL;
             }
 
             
@@ -102,15 +115,16 @@
     <body>
         <div class="container">
             <h1 class="text-center">FireFly Switch</h1>
-            <h3 class="text-center"><div id="deviceName"></div></h3>
+            <h4 class="text-center"><div id="deviceName"></div>
+            <div id="errorMessage" class="bg-danger text-center text-danger" style="display:none;border-radius: 5px;"></div></h4>
             <br>
         <div class="form-group">
-            <form name="frmMain" action="/bootstrap" method="POST">
+            <form name="frmMain" action="./bootstrap" method="post">
                 <label for="ssid">WiFi SSID (Case Sensitive)</label>
-                <input id="ssid" type="text" class="form-control">
+                <input id="ssid" type="text" class="form-control" name="ssid">
                 <br>
                 <label for="wpaKey">WPA Key (Case Sensitive)</label>
-                <input id="wpaKey" type="text" class="form-control">
+                <input id="wpaKey" type="text" class="form-control" name="wpaKey">
                 <br>
                 <label for="serverName">Server Name/IP</label>
                 <input id="serverName" placeholder="192.168.100.1" type="text" class="form-control" onchange="setServerName(this.value)">
