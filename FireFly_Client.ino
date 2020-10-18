@@ -7,61 +7,10 @@
 #include <ESP8266httpUpdate.h>
 #include <ESP8266mDNS.h>
 #include <ESP8266HTTPUpdateServer.h>
+#include "Structures.h"
+#include <FS.h>   // Include the SPIFFS library
 
-typedef struct structSettings{
-  bool deviceIsProvisioned;
-  String friendlyName;
-  String deviceName;
-
-  struct structNetwork{
-    String machineMacAddress;
-    String ssidName;
-    String wpaKey;
-  } network;
-
-  struct structMqttServer{
-      String serverName;
-      int port;
-      String username;
-      String password;
-      String manageTopic;
-      String clientTopic;
-      String eventTopic;
-     } mqttServer;
-
-  struct structFirmware{
-    String url;
-    int version;
-    unsigned long refreshMilliseconds;
-    unsigned long lastHandled;
-  } firmware;
-
-  struct structBootstrap{
-    String url;
-    int version;
-    unsigned long refreshMilliseconds;
-    unsigned long lastHandled;
-  } bootstrap;
-
-};
-
-typedef struct structLED{
-  int pin;
-  String alias;
-  int color;
-  int illumination;
-  int style;
-  int styleData;
-  int countOfDefinedIntensity;
-  
-  struct structIntensity{
-    String alias;
-    int illumination;
-  }definedIntensity[8];
-  
-};
-
-const int firmwareVersion = 2;
+const int firmwareVersion = 30;
 
 /* Define the LED colors */
 const int LED_COLOR_WHITE = 0;
@@ -71,18 +20,19 @@ const int LED_COLOR_YELLOW = 3;
 const int LED_COLOR_GREEN = 4;
 
 /* These are defined by the physical layout of the board */
-const int PORT_A = D1;
-const int PORT_B = D2;
-const int PORT_C = D3;
-const int PORT_D = D5;
-const int PORT_E = D6;
-const int PORT_F = D7;
+const int PORT_A = D0;
+const int PORT_B = D1;
+const int PORT_C = D2;
+const int PORT_D = D3;
+const int PORT_E = D4;
+const int PORT_F = D5;
 const int FACTORY_RESET = 10;
 
 /* Define the LED style, where blink is binary 0/100%; snore is 0-100-0% */
 const int STYLE_NORMAL = 0;
 const int STYLE_BLINK = 1;
 const int STYLE_SNORE = 2;
+const int STYLE_ROTATE = 3;
 
 const int EEPROMLength = 4000;
 const int EEPROMDataBegin = 10; //Reserving the first 10 addresses for provision statuses
@@ -104,16 +54,35 @@ ESP8266HTTPUpdateServer httpUpdater; //HTTP server client to handle OTA updates
 
 void setup() {
 
+  Serial.begin(115200);
+/*
+  //Set the number of LED's to 6
+  countOfLEDs = 6;
+
+  leds[0].pin = PORT_A;
+  leds[1].pin = PORT_B;
+  leds[2].pin = PORT_C;
+  leds[3].pin = PORT_D;
+  leds[4].pin = PORT_E;
+  leds[5].pin = PORT_F;
+
+  for(int i=0; i < countOfLEDs; i++){
+
+    pinMode(leds[i].pin, OUTPUT);
+    setBrightness(&leds[i], int(PWMRANGE/16));
+
+  }
+
+  setBrightness(&leds[0], PWMRANGE);
+  blinkLastHandled = millis();
+
+  return;*/
+
   //Set the firmware version
   settings.firmware.version = firmwareVersion;
 
-  Serial.begin(115200);
-
   //Set pin FACTORY_RESET to pullup
   pinMode(FACTORY_RESET, INPUT_PULLUP);
-
-  broadcastLine(padRight("", 23, ">") + " System Restarted " + padRight("", 23, "<"));
-  broadcastLine(padRight("", 19, "-") + " FireFly Client Version " + (String)firmwareVersion + " " + padRight("", 19, "-")+"\n");
 
   //Get the MAC address
   settings.network.machineMacAddress = WiFi.macAddress();
@@ -121,11 +90,10 @@ void setup() {
 
   //Set the device name from the MAC address
   settings.deviceName = settings.network.machineMacAddress;
-  settings.deviceName.replace(":","");
+  settings.deviceName.replace(":", "");
 
   //Set the hostname
-  WiFi.hostname("FireFly-" + settings.deviceName);  
-  broadcastLine("Hostname is " +  WiFi.hostname());
+  WiFi.hostname("FireFly-" + settings.deviceName);
 
   //Set the default refresh seconds for firmware and bootstrap
   settings.bootstrap.refreshMilliseconds = 3600000;
@@ -135,46 +103,38 @@ void setup() {
 
   //Check the provisioning status
   checkDeviceProvisioned();
-  
+
   //Set the device's current mode depending on if it is provisioned or not
-  if(settings.deviceIsProvisioned == false){
+  if (settings.deviceIsProvisioned == false) {
 
     //Configure for provisioning mode
     setupProvisioningMode();
 
-  }else{
-
-    //The device is provisioned, get the settings from the EEPROM
-    broadcastLine("Device has been provisioned");
+  } else {
 
     //Read the data from EEPROM
     readEEPROMToRAM();
-    
+
     //Attempt to connect to the WiFi Network as a client
     WiFi.mode(WIFI_STA);
 
     delay(500);
-  
-    if(WiFi.status() != WL_CONNECTED){
+
+    if (WiFi.status() != WL_CONNECTED) {
       WiFi.begin(settings.network.ssidName.c_str(), settings.network.wpaKey.c_str());
-      broadcastLine("Attempting to connect to network " + settings.network.ssidName);
     }
-     
+
     //Print output while waiting for WiFi to connect
     while (WiFi.status() != WL_CONNECTED) {
       delay(500);
-      Serial.print(".");
     }
-  
-    broadcastLine("\nNow connected to network "+ settings.network.ssidName);
-    broadcastLine("IP address: " + WiFi.localIP().toString() + "\nMAC Address: " + WiFi.macAddress() + "\n");
 
     //Configure the mqtt Client
     mqttClient.setServer(settings.mqttServer.serverName.c_str(), settings.mqttServer.port);
     mqttClient.setCallback(mqttCallback);
 
     //Subscribe to the required MQTT topics
-    mqttClient.subscribe(settings.mqttServer.manageTopic.c_str());
+    mqttClient.subscribe(settings.mqttServer.controlTopic.c_str());
     mqttClient.subscribe(settings.mqttServer.clientTopic.c_str());
     mqttClient.subscribe(settings.mqttServer.eventTopic.c_str());
 
@@ -187,51 +147,54 @@ void setup() {
 
 void loop() {
 
-  //Determine if the FACTORY_RESET has been pulled low, if so, blow away the EEPROM
-  if(digitalRead(FACTORY_RESET) == LOW){
+  //rotateLEDs();
 
-    if(settings.deviceIsProvisioned == true){
+  //return;
+
+  //Determine if the FACTORY_RESET has been pulled low, if so, blow away the EEPROM
+  if (digitalRead(FACTORY_RESET) == LOW) {
+
+    if (settings.deviceIsProvisioned == true) {
 
       EEPROMWrite("false", 0);
-      broadcastLine("Factory reset requested;  Settings will be cleared on next power cycle.");
       settings.deviceIsProvisioned = false;
     }
-    
+
   }
 
   //See which loop we should execute
-  if(settings.deviceIsProvisioned == false){
+  if (settings.deviceIsProvisioned == false) {
 
-      //Setup a client handler
-      webServer.handleClient();
-    
-  }else{
- 
+    //Setup a client handler
+    webServer.handleClient();
+
+  } else {
+
     //The device has been provisioned, run the normal processes
     if (!mqttClient.connected()) {
       reconnectMQTT();
     }
-  
+
     mqttClient.loop();
 
     //Blink the LEDs that need to be blinkLEDs if it's time to do so
-    if((millis() - blinkLastHandled) > blinkEveryMilliseconds){
+    if ((millis() - blinkLastHandled) > blinkEveryMilliseconds) {
       blinkLEDs();
     }
 
     //Only snore every 40th clock cycle
-    if(millis()%60 == 0){
+    if (millis() % 60 == 0) {
       //Snore the LEDs that need to be snored
       snoreLEDs();
     }
 
     //See if it is time to send an unsolicited status message
-    if((millis() - healthUpdateLastHandled) > healthUpdateEveryMilliseconds){
+    if ((millis() - healthUpdateLastHandled) > healthUpdateEveryMilliseconds) {
       handleHealth();
     }
 
     //See if it is time to get a new bootstrap
-    if((millis() - settings.bootstrap.lastHandled) > settings.bootstrap.refreshMilliseconds){
+    if ((millis() - settings.bootstrap.lastHandled) > settings.bootstrap.refreshMilliseconds) {
       checkBootstrapUpgrade();
     }
 
@@ -239,19 +202,19 @@ void loop() {
 
 }
 
-void blinkLEDs(){
+void blinkLEDs() {
 
   //Find any LED's that should be blinking
-  for(int i=0; i < countOfLEDs; i++){
+  for (int i = 0; i < countOfLEDs; i++) {
 
-    if(leds[i].style == STYLE_BLINK){
+    if (leds[i].style == STYLE_BLINK) {
 
-      if(leds[i].illumination == 0){
+      if (leds[i].illumination == 0) {
 
         //Turn on the LED to the pre-last value
         setBrightness(&leds[i], leds[i].styleData);
 
-      }else{
+      } else {
 
         //Turn off the LED
         setBrightness(&leds[i], "OFF");
@@ -264,37 +227,37 @@ void blinkLEDs(){
   blinkLastHandled = millis();
 }
 
-void snoreLEDs(){
+void snoreLEDs() {
 
   //Find any LED's that should be blinking
-  for(int i=0; i < countOfLEDs; i++){
+  for (int i = 0; i < countOfLEDs; i++) {
 
-    if(leds[i].style == STYLE_SNORE){
+    if (leds[i].style == STYLE_SNORE) {
 
       //Determine if we are increasing (not zero) or decreasing (zero)
-      if(leds[i].styleData != 0){
+      if (leds[i].styleData != 0) {
 
         //Increment the illumination
         leds[i].illumination++;
 
         //If we are now greater than PWMRANGE, switch the direction for the next iteration
-        if(leds[i].illumination > PWMRANGE){
+        if (leds[i].illumination > PWMRANGE) {
           leds[i].styleData = 0;
         }
-        
+
         //Set the new value
         setBrightness(&leds[i], leds[i].illumination, true);
 
-      }else{
+      } else {
 
         //Decrement the illumination
         leds[i].illumination--;
 
         //If we are now less than 10, switch the direction for the next iteration; Less than 10 makes the LED flash off
-        if(leds[i].illumination < 10){
+        if (leds[i].illumination < 10) {
           leds[i].styleData = 1;
         }
-        
+
         //Set the new value
         setBrightness(&leds[i], leds[i].illumination, true);
 
@@ -303,31 +266,46 @@ void snoreLEDs(){
   }
 }
 
-void broadcastLine(String data){
-  /* Outputs the data passed to the serial line */
+void rotateLEDs(){
 
-  Serial.println(data);
-  
-}
-
-String padRight(String data, int toLength, String padValue){
-  /* 
-  * Makes output pretty on the telnet client.
-  */
-
-  while(data.length() < toLength){
-    data = data + padValue;    
+  //Only run this function every 1 second
+  if(millis() - blinkLastHandled < 200){
+    return;
   }
 
-  return data;
-    
+  //Find any LED's that should be on
+  for (int i = 0; i < countOfLEDs; i++) {
+
+    if(leds[i].illumination == PWMRANGE){
+
+      //Turn off this LED
+      setBrightness(&leds[i], int(PWMRANGE/16));
+
+      if((i+1) == countOfLEDs){
+
+        //This is LED 5, turn on LED 0
+        setBrightness(&leds[0], PWMRANGE);
+
+      }else{
+        //Turn on the next LED
+        setBrightness(&leds[(i+1)], PWMRANGE);
+
+      }
+
+      //Update the last handled
+      blinkLastHandled = millis();
+      return;
+    }
+
+  }
+   
 }
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
   /* This function will handle all incoming requests for subscribed topics */
 
   String receivedPayload = "";
- 
+
   //Assemble the payload data
   for (int i = 0; i < length; i++) {
     receivedPayload = String(receivedPayload + (char)payload[i]);
@@ -341,78 +319,155 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
 }
 
-void publishMQTT(String topic, String payload){
+void publishMQTT(String topic, String payload) {
   /*
-   * Sends the requested payload to the requested topic, and also broadcasts the message on the serial line.
-   */
+     Sends the requested payload to the requested topic, and also broadcasts the message on the serial line.
+  */
 
   //Clean the strings
   topic.trim();
   payload.trim();
 
   mqttClient.publish(String(topic).c_str(), String(payload).c_str());
-  broadcastLine("<=> " + padRight(topic, 40, " ") + payload);
-  
+
 }
 
-void handleMQTTMessageReceived(String topic, String payload){
-  /* 
+void handleMQTTMessageReceived(String topic, String payload) {
+  /*
     Handles incoming messages from MQTT.  Payloads must exactly match.
-    Output is echoed on telnet and MQTT /client/# topic. 
+    Output is echoed on telnet and MQTT /client/# topic.
   */
 
   //Trim the payload
   payload.trim();
 
-  broadcastLine("MQTT Message received on topic: [" + topic + "] with payload [" + payload + "]");
-
   //See if the payload requests a restart
-  if(topic == settings.mqttServer.manageTopic + "/restart" && payload != ""){
+  if (topic == settings.mqttServer.controlTopic + "/restart" && payload != "") {
 
     turnOffAllLEDs();
 
     publishMQTT(settings.mqttServer.clientTopic + "/status", "Restarting");
-    
+
     delay(500);
-    
+
     ESP.restart();
 
     return;
-    
+
   }
 
   //See if the payload requests a health check
-  if(topic == settings.mqttServer.manageTopic + "/status"){
-    
+  if (topic == settings.mqttServer.controlTopic + "/status") {
+
     handleHealth();
 
     return;
   }
 
   //See if the payload requests a firmware update check
-  if(topic == settings.mqttServer.manageTopic + "/firwareUpdate"){
-    
+  if (topic == settings.mqttServer.controlTopic + "/firmwareUpdate") {
+
     checkFirmwareUpgrade();
 
     return;
   }
 
   //See if the payload requests a bootstrap update check
-  if(topic == settings.mqttServer.manageTopic + "/bootstrapUpdate"){
-    
+  if (topic == settings.mqttServer.controlTopic + "/bootstrapUpdate") {
+
     checkBootstrapUpgrade();
 
     return;
   }
 
   //See if the topic was an event
-  if(topic.startsWith(settings.mqttServer.eventTopic) == true){
-    handleEventTopic(topic, payload);
+  if (topic.startsWith(settings.mqttServer.eventTopic) == true) {
+
+    if (topic.endsWith("/global") == true) {
+      handleGlobalEventTopic(topic, payload);
+    }
+    else {
+      handleEventTopic(topic, payload);
+    }
   }
 
 }
 
-void handleEventTopic(String topic, String payload){
+void handleEventTopic(String topic, String payload) {
+
+  String messageActor;
+
+  messageActor = topic.substring(topic.lastIndexOf("/") + 1);
+
+  //Find the button
+  for (int i = 0; i < countOfLEDs; i++) {
+
+    if (leds[i].alias == messageActor) {
+
+      //See if we are opening or closing
+      if (payload == "ON") {
+
+        //Remember the current illumination value
+        leds[i].styleData = leds[i].illumination;
+
+        //Set the illumination to OFF
+        setBrightness(&leds[i], "OFF");
+      }
+
+      if (payload == "OFF") {
+
+        if (leds[i].styleData != 0) {
+
+          //Restore the previous value
+          setBrightness(&leds[i], leds[i].styleData);
+
+        } else {
+
+          //Use the default
+          setBrightness(&leds[i], "DEFAULT");
+
+        }
+      }
+
+      if (payload == "MINIMUM" || payload == "MAXIMUM") {
+
+        //Remember the current illumination value
+        leds[i].styleData = leds[i].illumination;
+
+        setBrightness(&leds[i], "OFF");
+
+        delay(100);
+
+        //Use the default
+        setBrightness(&leds[i], "MAXIMUM");
+
+        delay(100);
+
+        setBrightness(&leds[i], "OFF");
+
+        delay(100);
+
+        //Use the default
+        setBrightness(&leds[i], "MAXIMUM");
+
+        delay(100);
+
+        setBrightness(&leds[i], "OFF");
+
+        delay(100);
+
+        //Use the default
+        setBrightness(&leds[i], "MAXIMUM");
+
+        delay(100);
+
+      }
+    }
+  }
+
+}
+
+void handleGlobalEventTopic(String topic, String payload) {
   /* Handles all of the business logic */
 
   //Create a jsonDocument object to deserialize into
@@ -420,10 +475,8 @@ void handleEventTopic(String topic, String payload){
 
   //Deserialize the response
   auto jsonParseError = deserializeJson(jsonDoc, payload);
-      
+
   if (jsonParseError) {
-    broadcastLine("MQTT message did not contain valid JSON");
-    broadcastLine(jsonParseError.c_str());
     return;
   }
 
@@ -434,8 +487,8 @@ void handleEventTopic(String topic, String payload){
   //Get the type and value from the payload
   messageType = jsonDoc["type"].as<String>();
   messageValue = jsonDoc["value"].as<String>();
-  messageActor= jsonDoc["actor"].as<String>();
-  
+  messageActor = jsonDoc["actor"].as<String>();
+
 
   //Clean the data
   messageType.toUpperCase();
@@ -446,32 +499,32 @@ void handleEventTopic(String topic, String payload){
   messageActor.trim();
 
 
-  if(messageType == "EVENT"){
+  if (messageType == "EVENT") {
 
     //Find the button
-    for(int i=0; i < countOfLEDs; i++){
+    for (int i = 0; i < countOfLEDs; i++) {
 
-      if(leds[i].alias == messageActor){
+      if (leds[i].alias == messageActor) {
 
         //See if we are opening or closing
-        if(messageValue=="CLOSED"){
-         
+        if (messageValue == "CLOSED") {
+
           //Remember the current illumination value
           leds[i].styleData = leds[i].illumination;
 
-          //Set the illumination to ON
-          setBrightness(&leds[i], "ON");
+          //Set the illumination to OFF
+          setBrightness(&leds[i], "OFF");
         }
 
-        if(messageValue=="OPEN"){
+        if (messageValue == "OPEN") {
 
-          if(leds[i].styleData != 0){
+          if (leds[i].styleData != 0) {
 
             //Restore the previous value
             setBrightness(&leds[i], leds[i].styleData);
 
-          }else{
-            
+          } else {
+
             //Use the default
             setBrightness(&leds[i], "DEFAULT");
 
@@ -481,15 +534,15 @@ void handleEventTopic(String topic, String payload){
     }
   }
 
-  if(messageType == "BUTTON_NUMERIC"){
+  if (messageType == "BUTTON_NUMERIC") {
 
     //Find the button
-    for(int i=0; i < countOfLEDs; i++){
+    for (int i = 0; i < countOfLEDs; i++) {
 
-      if(leds[i].alias == messageActor){
+      if (leds[i].alias == messageActor) {
 
         //If the LED is currently snoring, make it stop
-        if(leds[i].style == STYLE_SNORE){
+        if (leds[i].style == STYLE_SNORE) {
           leds[i].style = STYLE_NORMAL;
         }
 
@@ -498,21 +551,21 @@ void handleEventTopic(String topic, String payload){
       }
 
       //Set the ON brightness to the received message when blinking
-      if(leds[i].style == STYLE_BLINK){
+      if (leds[i].style == STYLE_BLINK) {
         leds[i].styleData = calculateBrightness((int)jsonDoc["value"]);
       }
     }
   }
 
-  if(messageType == "BUTTON_NAMED"){
+  if (messageType == "BUTTON_NAMED") {
 
     //Find the button
-    for(int i=0; i < countOfLEDs; i++){
+    for (int i = 0; i < countOfLEDs; i++) {
 
-      if(leds[i].alias == messageActor){
+      if (leds[i].alias == messageActor) {
 
         //If the LED is currently snoring, make it stop
-        if(leds[i].style == STYLE_SNORE){
+        if (leds[i].style == STYLE_SNORE) {
           leds[i].style = STYLE_NORMAL;
         }
 
@@ -521,117 +574,117 @@ void handleEventTopic(String topic, String payload){
       }
 
       //Set the ON brightness to the received message when blinking
-      if(leds[i].style == STYLE_BLINK){
+      if (leds[i].style == STYLE_BLINK) {
         leds[i].styleData = calculateBrightness((int)jsonDoc["value"]);
       }
     }
   }
 
-  if(messageType == "BUTTON_BLINK"){
+  if (messageType == "BUTTON_BLINK") {
 
     //Find the button
-    for(int i=0; i < countOfLEDs; i++){
+    for (int i = 0; i < countOfLEDs; i++) {
 
-      if(leds[i].alias == messageActor){
+      if (leds[i].alias == messageActor) {
 
         //Toggle Blink
-        if(leds[i].style != STYLE_BLINK){
+        if (leds[i].style != STYLE_BLINK) {
 
           //Store the existing illuminatoin value
           leds[i].styleData = leds[i].illumination;
           leds[i].style = STYLE_BLINK;
 
-        }else{
+        } else {
 
           leds[i].style = STYLE_NORMAL;
 
           //Set the LED to the original brightness
           setBrightness(&leds[i], leds[i].styleData);
 
-        }        
+        }
       }
     }
   }
 
-  if(messageType == "BUTTON_SNORE"){
+  if (messageType == "BUTTON_SNORE") {
 
     //Find the button
-    for(int i=0; i < countOfLEDs; i++){
+    for (int i = 0; i < countOfLEDs; i++) {
 
-      if(leds[i].alias == messageActor){
+      if (leds[i].alias == messageActor) {
 
         //Toggle Snore
-        if(leds[i].style != STYLE_SNORE){
+        if (leds[i].style != STYLE_SNORE) {
 
           leds[i].style = STYLE_SNORE;
 
-        }else{
+        } else {
 
           leds[i].style = STYLE_NORMAL;
 
           //Set the brightness to the default
           setBrightness(&leds[i], "DEFAULT");
 
-        }        
+        }
       }
     }
   }
 
-  if(messageType == "COLOR_NUMERIC"){
+  if (messageType == "COLOR_NUMERIC") {
 
     //Find the button
-    for(int i=0; i < countOfLEDs; i++){
+    for (int i = 0; i < countOfLEDs; i++) {
 
-      if(leds[i].color == enumColors(messageActor)){
-
-          //If the LED is currently snoring, make it stop
-          if(leds[i].style == STYLE_SNORE){
-            leds[i].style = STYLE_NORMAL;
-          }
-
-          //Set the illumination to the numeric value
-          setBrightness(&leds[i], calculateBrightness((int)jsonDoc["value"]));
-      }
-
-      //Set the ON brightness to the received message when blinking
-      if(leds[i].style == STYLE_BLINK){
-        leds[i].styleData = calculateBrightness((int)jsonDoc["value"]);
-      }
-    }
-  }
-
-  if(messageType == "COLOR_NAMED"){
-
-    //Find the button
-    for(int i=0; i < countOfLEDs; i++){
-
-      if(leds[i].color == enumColors(messageActor)){
+      if (leds[i].color == enumColors(messageActor)) {
 
         //If the LED is currently snoring, make it stop
-        if(leds[i].style == STYLE_SNORE){
+        if (leds[i].style == STYLE_SNORE) {
           leds[i].style = STYLE_NORMAL;
         }
 
-          //Set the illumination to the numeric value
-          setBrightness(&leds[i], (String)messageValue);
+        //Set the illumination to the numeric value
+        setBrightness(&leds[i], calculateBrightness((int)jsonDoc["value"]));
       }
 
       //Set the ON brightness to the received message when blinking
-      if(leds[i].style == STYLE_BLINK){
+      if (leds[i].style == STYLE_BLINK) {
         leds[i].styleData = calculateBrightness((int)jsonDoc["value"]);
       }
     }
   }
 
-  if(messageType == "COLOR_BLINK"){
+  if (messageType == "COLOR_NAMED") {
 
     //Find the button
-    for(int i=0; i < countOfLEDs; i++){
+    for (int i = 0; i < countOfLEDs; i++) {
 
-      if(leds[i].color == enumColors(messageActor)){
+      if (leds[i].color == enumColors(messageActor)) {
+
+        //If the LED is currently snoring, make it stop
+        if (leds[i].style == STYLE_SNORE) {
+          leds[i].style = STYLE_NORMAL;
+        }
+
+        //Set the illumination to the numeric value
+        setBrightness(&leds[i], (String)messageValue);
+      }
+
+      //Set the ON brightness to the received message when blinking
+      if (leds[i].style == STYLE_BLINK) {
+        leds[i].styleData = calculateBrightness((int)jsonDoc["value"]);
+      }
+    }
+  }
+
+  if (messageType == "COLOR_BLINK") {
+
+    //Find the button
+    for (int i = 0; i < countOfLEDs; i++) {
+
+      if (leds[i].color == enumColors(messageActor)) {
 
         //Toggle Blink
-        if(leds[i].style != STYLE_BLINK){
+        if (leds[i].style != STYLE_BLINK) {
 
           //Store the existing illuminatoin value
           leds[i].styleData = leds[i].illumination;
@@ -639,49 +692,49 @@ void handleEventTopic(String topic, String payload){
           leds[i].style = STYLE_BLINK;
 
 
-        }else{
+        } else {
 
           leds[i].style = STYLE_NORMAL;
 
           //Set the LED to the original brightness
           setBrightness(&leds[i], leds[i].styleData);
-          
-        }        
+
+        }
       }
     }
   }
 
-  if(messageType == "COLOR_SNORE"){
+  if (messageType == "COLOR_SNORE") {
 
     //Find the button
-    for(int i=0; i < countOfLEDs; i++){
+    for (int i = 0; i < countOfLEDs; i++) {
 
-      if(leds[i].color == enumColors(messageActor)){
+      if (leds[i].color == enumColors(messageActor)) {
 
         //Toggle Snore
-        if(leds[i].style != STYLE_SNORE){
+        if (leds[i].style != STYLE_SNORE) {
 
           leds[i].style = STYLE_SNORE;
 
-        }else{
+        } else {
 
           leds[i].style = STYLE_NORMAL;
 
           //Set the brightness to the default
           setBrightness(&leds[i], "DEFAULT");
 
-        }        
+        }
       }
     }
   }
 
-  if(messageType == "GLOBAL_NUMERIC"){
+  if (messageType == "GLOBAL_NUMERIC") {
 
     //Iterate through the buttons
-    for(int i=0; i < countOfLEDs; i++){
+    for (int i = 0; i < countOfLEDs; i++) {
 
       //If the LED is currently snoring, make it stop
-      if(leds[i].style == STYLE_SNORE){
+      if (leds[i].style == STYLE_SNORE) {
         leds[i].style = STYLE_NORMAL;
       }
 
@@ -689,18 +742,18 @@ void handleEventTopic(String topic, String payload){
       setBrightness(&leds[i], calculateBrightness((int)jsonDoc["value"]));
 
       //Set the ON brightness to the received message when blinking
-      if(leds[i].style == STYLE_BLINK){
+      if (leds[i].style == STYLE_BLINK) {
         leds[i].styleData = calculateBrightness((int)jsonDoc["value"]);
       }
     }
   }
 
-  if(messageType == "GLOBAL_NAMED"){
+  if (messageType == "GLOBAL_NAMED") {
     //Iterate through the buttons
-    for(int i=0; i < countOfLEDs; i++){
+    for (int i = 0; i < countOfLEDs; i++) {
 
       //If the LED is currently snoring, make it stop
-      if(leds[i].style == STYLE_SNORE){
+      if (leds[i].style == STYLE_SNORE) {
         leds[i].style = STYLE_NORMAL;
       }
 
@@ -708,54 +761,54 @@ void handleEventTopic(String topic, String payload){
       setBrightness(&leds[i], (String)messageValue);
 
       //Set the ON brightness to the received message when blinking
-      if(leds[i].style == STYLE_BLINK){
+      if (leds[i].style == STYLE_BLINK) {
         leds[i].styleData = calculateBrightness((int)jsonDoc["value"]);
       }
     }
 
   }
 
-  if(messageType == "GLOBAL_BLINK"){
+  if (messageType == "GLOBAL_BLINK") {
 
     //Find the button
-    for(int i=0; i < countOfLEDs; i++){
+    for (int i = 0; i < countOfLEDs; i++) {
 
       //Toggle Blink
-      if(leds[i].style != STYLE_BLINK){
+      if (leds[i].style != STYLE_BLINK) {
 
         //Store the existing illuminatoin value
         leds[i].styleData = leds[i].illumination;
 
         leds[i].style = STYLE_BLINK;
 
-      }else{
+      } else {
 
         leds[i].style = STYLE_NORMAL;
 
         //Set the LED to the original brightness
         setBrightness(&leds[i], leds[i].styleData);
-      }        
+      }
     }
   }
 
-  if(messageType == "GLOBAL_SNORE"){
+  if (messageType == "GLOBAL_SNORE") {
 
     //Find the button
-    for(int i=0; i < countOfLEDs; i++){
+    for (int i = 0; i < countOfLEDs; i++) {
 
       //Toggle Snore
-      if(leds[i].style != STYLE_SNORE){
+      if (leds[i].style != STYLE_SNORE) {
 
         leds[i].style = STYLE_SNORE;
 
-      }else{
+      } else {
 
         leds[i].style = STYLE_NORMAL;
 
         //Set the brightness to the default
         setBrightness(&leds[i], "DEFAULT");
 
-      }        
+      }
     }
   }
 }
@@ -767,131 +820,139 @@ void reconnectMQTT() {
 
   // Loop until we're reconnected
   while (!mqttClient.connected()) {
-    
-    broadcastLine("Attempting to connect to MQTT server " + settings.mqttServer.serverName);
-        
+
     // Attempt to connect
     if (mqttClient.connect(settings.network.machineMacAddress.c_str(), settings.mqttServer.username.c_str(), settings.mqttServer.password.c_str())) {
-      
+
       restoreAllLEDs();
 
-      broadcastLine("Now connected to MQTT server "+ settings.mqttServer.serverName);
-
-      broadcastLine(padRight("", 64, "#"));
-      
       // Publish an announcement on the client topic
       publishMQTT(settings.mqttServer.clientTopic + "/status", "Started");
 
       //Send the health event
       handleHealth();
 
-      broadcastLine(padRight("", 64, "#"));
-      
       //Subscribe to the management topic wildcard
-      createSubscription(settings.mqttServer.manageTopic + "/#");
+      createSubscription(settings.mqttServer.controlTopic + "/#");
 
       //Create a subscription to the global button topic
       createSubscription(settings.mqttServer.eventTopic + "/global");
 
       //Subscribe to each LED button press topic
-      for(int i = 0; i < countOfLEDs; i++){
+      for (int i = 0; i < countOfLEDs; i++) {
 
         createSubscription(settings.mqttServer.eventTopic + leds[i].alias);
 
       }
-       
+
     } else {
-      
-      broadcastLine("Failed to connect to MQTT.  Error Number:" + (String)mqttClient.state());
-      broadcastLine("Try again in 5 seconds.");
-      
+
+      //Make sure we're connected to WiFi
+      if (WiFi.status() != WL_CONNECTED) {
+        WiFi.begin(settings.network.ssidName.c_str(), settings.network.wpaKey.c_str());
+      }
+
+      //Print output while waiting for WiFi to connect
+      while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+      }
+
       // Wait 5 seconds before retrying
       delay(5000);
     }
   }
 }
 
-boolean createSubscription(String topic){
+boolean createSubscription(String topic) {
   /* A wrapper for the mqtt subscribe method */
 
   //Remove any duplicated slashes
-  topic.replace("//","/");
+  topic.replace("//", "/");
 
   //Make sure we didn't end our subscription with a trailing /
-  if(topic.substring(topic.length()-1) == "/"){
+  if (topic.substring(topic.length() - 1) == "/") {
 
-    topic = topic.substring(0,topic.length()-2);
+    topic = topic.substring(0, topic.length() - 2);
 
   }
-  
-  //Create the subscription
-  if(mqttClient.subscribe(topic.c_str()) == true){
-
-    broadcastLine("Subscribed to " + topic);
-
-  }else{
-    broadcastLine("Failed to subscribe to " + topic);
-  };
 
 }
 
-int calculateBrightness(int brightnessPercentage){
+int calculateBrightness(int brightnessPercentage) {
 
   int returnValue = 0;
 
   //Calculate the PWM value to send to the pin based on the percentage passed
-  returnValue = (int)(((double)brightnessPercentage/100)*PWMRANGE);
+  returnValue = (int)(((double)brightnessPercentage / 100) * PWMRANGE);
 
-  if(returnValue > PWMRANGE){
+  if (returnValue > PWMRANGE) {
     returnValue = PWMRANGE;
   }
 
-  if(returnValue < 0){
+  if (returnValue < 0) {
     returnValue = 0;
   }
-  
+
   return returnValue;
-  
+
 }
 
-void checkDeviceProvisioned(){
+void checkDeviceProvisioned() {
   /*
-   * This function will check the EEPROM to see if the device has been provisioned.  If the EEPROM is not "true", it will assume the device has not been provisioned and will
-   * set the setting accordingly.
-   */
+     This function will check the EEPROM to see if the device has been provisioned.  If the EEPROM is not "true", it will assume the device has not been provisioned and will
+     set the setting accordingly.
+  */
 
-   //Read the EEPROM starting at memory position 0
-   if(EEPROMRead(0) == "true"){
+  //Read the EEPROM starting at memory position 0
+  if (EEPROMRead(0) == "true") {
 
-      //The device has been provisioned, set the setting to true
-      settings.deviceIsProvisioned = true;
-      
-   }else{
+    //The device has been provisioned, set the setting to true
+    settings.deviceIsProvisioned = true;
 
-      //The device has not been provisioned, set the setting to false
-      settings.deviceIsProvisioned = false;
-    
-   }
-  
+  } else {
+
+    //The device has not been provisioned, set the setting to false
+    settings.deviceIsProvisioned = false;
+
+  }
+
 }
 
-void setupProvisioningMode(){
+void setupProvisioningMode() {
   /*
-   * Configures necessary items for when the device has not been provisioned.
-   */
+     Configures necessary items for when the device has not been provisioned.
+  */
 
   //Set the default IP address, gateway, and subnet to use when in AP mode
   IPAddress ip(192, 168, 1, 1);
   IPAddress gateway(192, 168, 1, 1);
   IPAddress subnet(255, 255, 255, 0);
-  
+
   WiFi.softAPConfig(ip, gateway, subnet);
-  
+
   WiFi.softAP(("FireFly-" + settings.deviceName).c_str());
 
-  webServer.on("/", wwwHandleRoot);
-  webServer.onNotFound(wwwHandleNotFound);
+  SPIFFS.begin();
 
+  webServer.on(F("/bootstrap"), HTTP_POST, wwwHandleSubmit);
+
+  webServer.onNotFound([]() {
+
+    //Determine the method handler
+    switch(webServer.method()){
+      case HTTP_GET:
+        handleWebGet(webServer.uri());
+        break;
+
+      default:
+
+        //We don't know how to handle this method, return 400
+        webServer.send(400);
+        break;
+    }
+
+  });
+  
   MDNS.begin(settings.deviceName.c_str());
 
   httpUpdater.setup(&webServer);
@@ -899,17 +960,14 @@ void setupProvisioningMode(){
   MDNS.addService("http", "tcp", 80);
 
   webServer.begin();
-  
-  broadcastLine("Device requires provisioning.");
-  broadcastLine("Connect to Access Point FireFly-" + settings.deviceName + " and point your browser to http://192.168.1.1 to begin.  To update firmware, go to http://192.168.1.1/update.");
-  
+
 }
 
-void setupLEDs(void){
+void setupLEDs(void) {
 
   /* Sets the pins and default brightness */
 
-  for(int i=0; i < countOfLEDs; i++){
+  for (int i = 0; i < countOfLEDs; i++) {
 
     //Set the pin for output
     pinMode(leds[i].pin, OUTPUT);
@@ -919,23 +977,23 @@ void setupLEDs(void){
   }
 }
 
-void setBrightness(structLED *ptrLed, int brightness){
+void setBrightness(structLED *ptrLed, int brightness) {
 
   ptrLed->illumination = brightness;
 
   analogWrite(ptrLed->pin, ptrLed->illumination);
 }
 
-void setBrightness(structLED *ptrLed, String intensity){
+void setBrightness(structLED *ptrLed, String intensity) {
 
   //Clean up the string
   intensity.toUpperCase();
   intensity.trim();
 
   //Find the intensity requested
-  for(int i=0; i < ptrLed->countOfDefinedIntensity; i++){
+  for (int i = 0; i < ptrLed->countOfDefinedIntensity; i++) {
 
-    if(ptrLed->definedIntensity[i].alias == intensity){
+    if (ptrLed->definedIntensity[i].alias == intensity) {
 
       ptrLed->illumination = calculateBrightness(ptrLed->definedIntensity[i].illumination);
 
@@ -943,11 +1001,11 @@ void setBrightness(structLED *ptrLed, String intensity){
   }
 
   //Also consider binary ON (100) and OFF (0)
-  if(intensity == "OFF"){
+  if (intensity == "OFF") {
     ptrLed->illumination = calculateBrightness(0);
   }
 
-  if(intensity == "ON"){
+  if (intensity == "ON") {
     ptrLed->illumination = calculateBrightness(100);
   }
 
@@ -956,7 +1014,7 @@ void setBrightness(structLED *ptrLed, String intensity){
 
 }
 
-void setBrightness(structLED *ptrLed, int illumination, bool isIllumination){
+void setBrightness(structLED *ptrLed, int illumination, bool isIllumination) {
 
   ptrLed->illumination = illumination;
 
@@ -964,11 +1022,11 @@ void setBrightness(structLED *ptrLed, int illumination, bool isIllumination){
 
 }
 
-void EEPROMWrite(String stringToWrite, int startPosition){
+void EEPROMWrite(String stringToWrite, int startPosition) {
   /*
-   * This function writes a string of data to the EEPROM beginning at a specified address.  It is sandwiched between two non-printable ASCII characters (2/STX and 3/ETX)
-   * to deliniate where the data begins and ends, which is used when reading the data.
-   */
+     This function writes a string of data to the EEPROM beginning at a specified address.  It is sandwiched between two non-printable ASCII characters (2/STX and 3/ETX)
+     to deliniate where the data begins and ends, which is used when reading the data.
+  */
 
   //Sandwich the data with STX and ETX so we can keep track of the data
   stringToWrite = char(02) + stringToWrite + char(03);
@@ -985,16 +1043,16 @@ void EEPROMWrite(String stringToWrite, int startPosition){
 
   //Commit the EEPROM
   EEPROM.commit();
- 
+
 }
 
-String EEPROMRead(int startPosition){
+String EEPROMRead(int startPosition) {
   /*
-   * This function reads EEPROM data.  It is sandwiched between two non-printable ASCII characters (2/STX and 3/ETX) to deliniate where the data begins and ends.
-   * Becasuse the EEPROM length is longer than the data contained, we can only reliably read the data between the two non-printable characters, as there could be junk data left
-   * after the data string in the EEPROM.  After the end of the data feed is found, we automatically advance to the end to force the function to stop reading (we could have another
-   * STX later on that we don't want to pick up).
-   */
+     This function reads EEPROM data.  It is sandwiched between two non-printable ASCII characters (2/STX and 3/ETX) to deliniate where the data begins and ends.
+     Becasuse the EEPROM length is longer than the data contained, we can only reliably read the data between the two non-printable characters, as there could be junk data left
+     after the data string in the EEPROM.  After the end of the data feed is found, we automatically advance to the end to force the function to stop reading (we could have another
+     STX later on that we don't want to pick up).
+  */
 
   byte value;
   String strReturnValue = "";
@@ -1003,13 +1061,13 @@ String EEPROMRead(int startPosition){
   EEPROM.begin(EEPROMLength);
 
   //Start reading the EEPROM where the data begins until the EEPROM length
-  for(int i=startPosition; i<EEPROMLength; i++){
+  for (int i = startPosition; i < EEPROMLength; i++) {
 
     // read a byte from the current address of the EEPROM
     value = EEPROM.read(i);
 
     //See what the value of this byte is
-    switch(value){
+    switch (value) {
 
       case 2:
         //This byte is the beginning of the data, start saving information at this point
@@ -1017,7 +1075,7 @@ String EEPROMRead(int startPosition){
         break;
 
       case 3:
-         //This byte is the end of the data, stop saving information at this point
+        //This byte is the end of the data, stop saving information at this point
         isProcessingData = false;
 
         //Set the address to the end of the EEPROM so we will break out of the WHILE loop
@@ -1027,30 +1085,27 @@ String EEPROMRead(int startPosition){
       default:
 
         //If the character is printable AND we are processing a word, store the character to the string
-        if(value >= 32 && value <= 127 && isProcessingData == true){
+        if (value >= 32 && value <= 127 && isProcessingData == true) {
           strReturnValue = strReturnValue + String(char(value));
-        }   
-      }
+        }
     }
+  }
 
   return strReturnValue;
 
 }
 
-void readEEPROMToRAM(){
+void readEEPROMToRAM() {
 
   //Create a jsonDocument object to deserialize into
   DynamicJsonDocument jsonDoc(EEPROMLength);
 
   //Deserialize the response
   auto jsonParseError = deserializeJson(jsonDoc, EEPROMRead(EEPROMDataBegin));
-      
+
   if (jsonParseError) {
     //Set the provision mode to false
     EEPROMWrite("false", 0);
-    broadcastLine("Unable to parse EEPROM");
-    broadcastLine(jsonParseError.c_str());
-   
     return;
   }
 
@@ -1066,7 +1121,7 @@ void readEEPROMToRAM(){
   settings.mqttServer.username = jsonDoc["mqtt"]["username"].as<String>();
   settings.mqttServer.password = jsonDoc["mqtt"]["password"].as<String>();
 
-  settings.mqttServer.manageTopic = jsonDoc["mqtt"]["topics"]["management"].as<String>();
+  settings.mqttServer.controlTopic = jsonDoc["mqtt"]["topics"]["management"].as<String>();
   settings.mqttServer.clientTopic = jsonDoc["mqtt"]["topics"]["client"].as<String>();
   settings.mqttServer.eventTopic = jsonDoc["mqtt"]["topics"]["event"].as<String>();
 
@@ -1079,7 +1134,7 @@ void readEEPROMToRAM(){
   //Replace the placeholder values, if they exist
   settings.mqttServer.username.replace("$DEVICENAME$", settings.deviceName);
   settings.mqttServer.password.replace("$DEVICENAME$", settings.deviceName);
-  settings.mqttServer.manageTopic.replace("$DEVICENAME$", settings.deviceName);
+  settings.mqttServer.controlTopic.replace("$DEVICENAME$", settings.deviceName);
   settings.mqttServer.clientTopic.replace("$DEVICENAME$", settings.deviceName);
   settings.firmware.url.replace("$DEVICENAME$", settings.deviceName);
   settings.bootstrap.url.replace("$DEVICENAME$", settings.deviceName);
@@ -1088,12 +1143,12 @@ void readEEPROMToRAM(){
   countOfLEDs = jsonDoc["buttons"].size();
 
   //Only allow up to 6 LEDs
-  if(countOfLEDs > 6){
+  if (countOfLEDs > 6) {
     countOfLEDs = 6;
   }
 
   //Get the data for each button defined
-  for(int i=0; i < countOfLEDs; i++){
+  for (int i = 0; i < countOfLEDs; i++) {
 
     leds[i].pin = enumPorts(jsonDoc["buttons"][i]["port"].as<String>());
     leds[i].alias = jsonDoc["buttons"][i]["name"].as<String>();
@@ -1103,11 +1158,11 @@ void readEEPROMToRAM(){
     leds[i].countOfDefinedIntensity = jsonDoc["buttons"][i]["led"]["intensity"].size();
 
     //Only allow up to 8 defined intensities
-    if(leds[i].countOfDefinedIntensity > 8){
+    if (leds[i].countOfDefinedIntensity > 8) {
       leds[i].countOfDefinedIntensity = 8;
     }
 
-    for(int j=0; j < leds[i].countOfDefinedIntensity; j++){
+    for (int j = 0; j < leds[i].countOfDefinedIntensity; j++) {
 
       leds[i].definedIntensity[j].alias = jsonDoc["buttons"][i]["led"]["intensity"][j]["name"].as<String>();
       leds[i].definedIntensity[j].illumination = jsonDoc["buttons"][i]["led"]["intensity"][j]["value"];
@@ -1117,13 +1172,13 @@ void readEEPROMToRAM(){
     }
 
     //Clean the data
-     leds[i].alias.toUpperCase();
+    leds[i].alias.toUpperCase();
     leds[i].alias.trim();
 
   }
 }
 
-void handleHealth(){
+void handleHealth() {
 
   //Publish the uptime
   publishMQTT(settings.mqttServer.clientTopic + "/uptime", String(millis()));
@@ -1145,10 +1200,70 @@ void handleHealth(){
 
   //Update that we handled health
   healthUpdateLastHandled = millis();
-  
+
 }
 
-void wwwHandleRoot(){
+String getContentType(String filename) {
+
+  //Returns the content type for the given file
+  if (filename.endsWith(".html")){
+    return "text/html";
+  }
+
+  if (filename.endsWith(".css")){
+    return "text/css";
+  }
+
+  if (filename.endsWith(".js")){
+    return "application/javascript";
+  } 
+
+  //Not a recognized format, assume plain text
+  return "text/plain";
+}
+
+void handleWebGet(String uri){
+
+  //Return the device name if requested
+  if(uri == "/api/deviceName"){
+    webServer.send(200,"application/json","{\"deviceName\":\"" + settings.deviceName + "\"}");
+    return;
+  }
+
+  //Return the firmware version if requested
+  if(uri == "/api/firmwareVersion"){
+    webServer.send(200,"application/json","{\"firmwareVersion\":\"" + (String)firmwareVersion + "\"}");
+    return;
+  }
+
+  //If not file is requested, send index.html
+  if (uri.endsWith("/")) uri += "index.html";
+  
+  //Attempt to get the file from SPIFFS
+  if (SPIFFS.exists(uri)) {
+
+    //File exists, set the content type
+    String contentType = getContentType(uri);
+
+    //Read the data from the file and send it to the web client
+    File file = SPIFFS.open(uri, "r");
+    size_t sent = webServer.streamFile(file, contentType);
+
+    //Close the file
+    file.close();
+
+  }else{
+
+    //Not found
+    webServer.send(404); 
+
+  }
+}
+
+
+
+
+void wwwHandleRoot() {
   if (webServer.hasArg("cmdProvision")) {
     wwwHandleSubmit();
   }
@@ -1157,7 +1272,7 @@ void wwwHandleRoot(){
     char temp[2000];
 
     snprintf(temp, 2000,
-    "<!DOCTYPE html>\
+             "<!DOCTYPE html>\
     <html>\
       <head>\
         <meta http-equiv=\"content-type\" content=\"text/html; charset=UTF-8\">\
@@ -1187,10 +1302,27 @@ void wwwHandleRoot(){
   }
 }
 
-void wwwHandleSubmit(){
+void wwwHandleSubmit() {
+
+  String message;
+
+  Serial.println("submit received");
+
+  for (int i = 0; i < webServer.args(); i++) {
+
+    message = "ArrayPos" + (String)i + " –> ";
+    message += webServer.argName(i) + ": ";
+    message += webServer.arg(i) + "\n";
+
+    Serial.println(message);
+
+  } 
+
+
+  return;
 
   //See if we're trying to submit for the provisioning page
-  if(webServer.hasArg("cmdProvision")){
+  if (webServer.hasArg("cmdProvision")) {
 
     String SSID = webServer.arg("txtSSID");
     String wpaKey = webServer.arg("txtWpaKey");
@@ -1200,19 +1332,17 @@ void wwwHandleSubmit(){
     SSID.trim();
     wpaKey.trim();
     bootstrapURL.trim();
-      
-    broadcastLine("Attempting SSID " + SSID + " with WPA Key " + wpaKey + ".\nBootstrap URL: " + bootstrapURL);
-    
+
     webServer.sendHeader("Connection", "close");
     webServer.sendHeader("Access-Control-Allow-Origin", "*");
     webServer.send(200, "text/plain", "OK\r\n");
 
     //Give the system time to send the data back to the caller before attempting to provision
     delay(1000);
-    
+
     //Attempt to bootstrap
     attemptProvision(SSID, wpaKey, bootstrapURL);
-    
+
     return;
   }
 
@@ -1223,19 +1353,17 @@ void wwwHandleSubmit(){
   webServer.sendHeader("Connection", "close");
   webServer.sendHeader("Access-Control-Allow-Origin", "*");
   webServer.send(400, "text/plain", "Unknown Request\r\n");
-    
+
 }
 
-boolean retrieveBootstrap(String bootstrapURL){
-  
+boolean retrieveBootstrap(String bootstrapURL) {
+
   HTTPClient httpClient;
 
   httpClient.begin(bootstrapURL);
 
   //See if we were successful in retrieving the bootstrap
   if (httpClient.GET() == HTTP_CODE_OK) {
-
-    broadcastLine(httpClient.getString());
 
     //Write the response to the EEPROM
     EEPROMWrite(httpClient.getString(), EEPROMDataBegin);
@@ -1249,85 +1377,73 @@ boolean retrieveBootstrap(String bootstrapURL){
     readEEPROMToRAM();
 
     return true;
-    
-  }else{
 
-    broadcastLine("Failed retrieving bootstrap from " + bootstrapURL + ": " + (String)httpClient.errorToString(httpClient.GET()) + ".");
-    
+  } else {
+
     return false;
   }
 
 }
 
-void attemptProvision(String SSID, String wpaKey, String bootstrapURL){
+void attemptProvision(String SSID, String wpaKey, String bootstrapURL) {
 
   //Kill the soft AP
   WiFi.softAPdisconnect(true);
   WiFi.mode(WIFI_STA);
   delay(500);
 
-  if(WiFi.status() != WL_CONNECTED){
-      WiFi.begin(SSID.c_str(), wpaKey.c_str());
+  if (WiFi.status() != WL_CONNECTED) {
+    WiFi.begin(SSID.c_str(), wpaKey.c_str());
   }
 
   //Remember the start time
   unsigned long timeStartConnect = millis();
 
-  broadcastLine("Attempting to connect to network " + SSID);
-  
   //Print output while waiting for WiFi to connect
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
-    Serial.print(".");
 
     //Set a timer for 30 seconds to connect
-    if(millis() - timeStartConnect > 30000){
+    if (millis() - timeStartConnect > 30000) {
 
       //Disconnect the WiFi
       WiFi.disconnect();
-
-      //Write an error
-      broadcastLine("\nAttempting to provision failed!  Unable to connect to AP specified");
 
       //Restart the provisioning server
       setupProvisioningMode();
 
       //Exit this
       return;
-      
+
     }
   }
 
-  Serial.println("connected.");
-  broadcastLine("IP address: " + WiFi.localIP().toString() + "\nMAC Address: " + WiFi.macAddress() + "\n");
+  if (retrieveBootstrap(bootstrapURL) == true) {
 
-  if(retrieveBootstrap(bootstrapURL) == true){
-      broadcastLine("Retrieved configuration successfully.  Restarting.");
+    turnOffAllLEDs();
 
-      turnOffAllLEDs();
+    //Ensure the EEPROM has time to finish writing and closing the client
+    delay(1000);
 
-      //Ensure the EEPROM has time to finish writing and closing the client
-      delay(1000);
+    //Restart
+    ESP.restart();
 
-      //Restart
-      ESP.restart();
-      
-    } else {
-      
-      //Restart on failure
-      ESP.restart();
+  } else {
 
-    }
+    //Restart on failure
+    ESP.restart();
+
+  }
 
 }
-  
-void turnOffAllLEDs(){
+
+void turnOffAllLEDs() {
 
   //Turn off the LEDs
-  for(int i=0; i < countOfLEDs; i++){
+  for (int i = 0; i < countOfLEDs; i++) {
 
     //Remember the current brightness setting, except blinking which could be temporarily off
-    if(leds[i].style != STYLE_BLINK){
+    if (leds[i].style != STYLE_BLINK) {
 
       leds[i].styleData = leds[i].illumination;
 
@@ -1338,10 +1454,10 @@ void turnOffAllLEDs(){
 
 }
 
-void restoreAllLEDs(){
+void restoreAllLEDs() {
 
   //Turn off the LEDs
-  for(int i=0; i < countOfLEDs; i++){
+  for (int i = 0; i < countOfLEDs; i++) {
 
     //Set the illumination to the previous value
     setBrightness(&leds[i], leds[i].styleData);
@@ -1349,23 +1465,23 @@ void restoreAllLEDs(){
 
 }
 
-void wwwHandleNotFound(){
+void wwwHandleNotFound() {
   String message = "File Not Found\n\n";
   message += "URI: ";
   message += webServer.uri();
   message += "\nMethod: ";
-  message += (webServer.method() == HTTP_GET)?"GET":"POST";
+  message += (webServer.method() == HTTP_GET) ? "GET" : "POST";
   message += "\nArguments: ";
   message += webServer.args();
   message += "\n";
-  for (uint8_t i=0; i<webServer.args(); i++){
+  for (uint8_t i = 0; i < webServer.args(); i++) {
     message += " " + webServer.argName(i) + ": " + webServer.arg(i) + "\n";
   }
   webServer.send(404, "text/plain", message);
 }
 
 
-void checkBootstrapUpgrade(){
+void checkBootstrapUpgrade() {
 
   //Create an http client to connect to the firmware server
   HTTPClient httpClient;
@@ -1373,36 +1489,29 @@ void checkBootstrapUpgrade(){
   httpClient.begin(settings.bootstrap.url);
 
   //See if we get an HTTP 200/OK response
-  if(httpClient.GET() == HTTP_CODE_OK ) {
+  if (httpClient.GET() == HTTP_CODE_OK ) {
     String jsonServerResponse = httpClient.getString();
     httpClient.end();
-    
+
     //Create a jsonDocument object to deserialize into
     DynamicJsonDocument jsonDoc(EEPROMLength);
 
     //Deserialize the response
     auto jsonParseError = deserializeJson(jsonDoc, jsonServerResponse);
-        
+
     if (jsonParseError) {
-      broadcastLine("Unable to parse bootstrap server response");
-      broadcastLine(jsonServerResponse);
-      broadcastLine(jsonParseError.c_str());
 
       //Mark the check as handled
       settings.bootstrap.lastHandled = millis();
 
       return;
     }
-    
+
     //Get the firmware version
     int remoteVersion = jsonDoc["version"];
 
-    broadcastLine(padRight("", 64, "%"));
-    broadcastLine("Local bootstrap version: " + (String)settings.bootstrap.version);
-    broadcastLine( "Remove bootstrap version: " + (String)remoteVersion);
-
     //Make sure we got a valid version number
-    if(remoteVersion == 0){
+    if (remoteVersion == 0) {
 
       publishMQTT(settings.mqttServer.clientTopic + "/status", "Invalid Remote Bootstrap Version");
 
@@ -1411,38 +1520,33 @@ void checkBootstrapUpgrade(){
 
       return;
     }
-    
+
     //Check if the version requested is not the same as the one loaded (yes, we allow back flashing)
-    if(settings.bootstrap.version != remoteVersion) {
+    if (settings.bootstrap.version != remoteVersion) {
 
       publishMQTT(settings.mqttServer.clientTopic + "/status", "Updating Bootstrap");
 
       //Get the new bootstrap
-      if(retrieveBootstrap(settings.bootstrap.url) == true){
+      if (retrieveBootstrap(settings.bootstrap.url) == true) {
 
         publishMQTT(settings.mqttServer.clientTopic + "/status", "Bootstrap Updated Successfully");
-        
-      }else{
+
+      } else {
         publishMQTT(settings.mqttServer.clientTopic + "/status", "Bootstrap Update Failed");
       }
 
-    }else {
-      broadcastLine("Bootstrap is up-to-date.");
     }
   }
   else {
-    broadcastLine("Bootstrap version check failed, got HTTP response code " + (String)httpClient.GET() + " while trying to retrieve bootstrap version from " + (String)settings.bootstrap.url);
     publishMQTT(settings.mqttServer.clientTopic + "/status", "Bootstrap Update Failed");
   }
-  
+
   //Mark the check as handled
   settings.bootstrap.lastHandled = millis();
 
-  broadcastLine(padRight("", 64, "%"));
-  
 }
 
-void checkFirmwareUpgrade(){
+void checkFirmwareUpgrade() {
 
   //Create an http client to connect to the firmware server
   HTTPClient httpClient;
@@ -1451,20 +1555,18 @@ void checkFirmwareUpgrade(){
   int httpCode = httpClient.GET();
 
   //See if we get an HTTP 200/OK response
-  if( httpCode == 200 ) {
+  if ( httpCode == 200 ) {
 
     String jsonServerResponse = httpClient.getString();
-    
+
     //Create a jsonDocument object to deserialize into
     StaticJsonDocument<EEPROMLength> jsonDoc;
 
     //Deserialize the response
     auto jsonParseError = deserializeJson(jsonDoc, jsonServerResponse);
-        
+
     if (jsonParseError) {
-      broadcastLine("Unable to parse firmware server response");
-      broadcastLine(jsonServerResponse);
-      broadcastLine(jsonParseError.c_str());
+
       return;
     }
 
@@ -1472,71 +1574,60 @@ void checkFirmwareUpgrade(){
     String newFirmwareVersion = jsonDoc["version"];
     String firmwareBinURL = jsonDoc["url"];
 
-    broadcastLine(padRight("", 64, "%"));
-    broadcastLine("Current firmware version: " + (String)firmwareVersion);
-    broadcastLine( "Available firmware version: " + (String)newFirmwareVersion);
-
     //Check if the version requested is not the same as the one loaded (yes, we allow back flashing)
-    if( (String)newFirmwareVersion != (String)firmwareVersion ) {
-      broadcastLine( "Preparing to update firmware using " + firmwareBinURL);
+    if ( (String)newFirmwareVersion != (String)firmwareVersion ) {
       publishMQTT(settings.mqttServer.clientTopic + "/firmwareUpdate", "Updating");
       publishMQTT(settings.mqttServer.clientTopic + "/status", "Updating Firmware");
 
       //Attempt to retrieve the firmware and perform the update
       t_httpUpdate_return firmwareUpdateResponse = ESPhttpUpdate.update(firmwareBinURL);
 
-      switch(firmwareUpdateResponse) {
+      switch (firmwareUpdateResponse) {
         case HTTP_UPDATE_FAILED:
-          broadcastLine("HTTP Firmware Update Error: " + (String)ESPhttpUpdate.getLastErrorString().c_str());
           publishMQTT(settings.mqttServer.clientTopic + "/firmwareUpdate", "Failed");
           publishMQTT(settings.mqttServer.clientTopic + "/status", "Firmware Update Failed");
           publishMQTT(settings.mqttServer.clientTopic + "/firmware", (String)firmwareVersion);
           break;
 
         case HTTP_UPDATE_NO_UPDATES:
-          broadcastLine("HTTP_UPDATE_NO_UPDATES");
           break;
       }
     }
     else {
-      broadcastLine("Firmware is up-to-date.");
       publishMQTT(settings.mqttServer.clientTopic + "/firmware", (String)firmwareVersion);
     }
   }
   else {
-    broadcastLine("Firmware version check failed, got HTTP response code " + (String)httpCode + " while trying to retrieve firmware version from " + (String)settings.firmware.url);
     publishMQTT(settings.mqttServer.clientTopic + "/firmwareUpdate", "Failed");
     publishMQTT(settings.mqttServer.clientTopic + "/status", "Firmware Update Failed");
     publishMQTT(settings.mqttServer.clientTopic + "/firmware", (String)firmwareVersion);
   }
-  
-  broadcastLine(padRight("", 64, "%"));
-  
+
   httpClient.end();
 }
 
-int enumColors(String colorName){
+int enumColors(String colorName) {
 
   //Remove case sensitivity
   colorName.toUpperCase();
 
-  if(colorName == "WHITE") {
+  if (colorName == "WHITE") {
     return LED_COLOR_WHITE;
   };
 
-  if(colorName == "BLUE") {
+  if (colorName == "BLUE") {
     return LED_COLOR_BLUE;
   };
 
-  if(colorName == "RED") {
+  if (colorName == "RED") {
     return LED_COLOR_RED;
   };
 
-  if(colorName == "YELLOW") {
+  if (colorName == "YELLOW") {
     return LED_COLOR_YELLOW;
   };
 
-  if(colorName == "GREEN") {
+  if (colorName == "GREEN") {
     return LED_COLOR_GREEN;
   };
 
@@ -1545,9 +1636,9 @@ int enumColors(String colorName){
 
 }
 
-String enumColors(int color){
+String enumColors(int color) {
 
-  switch(color){
+  switch (color) {
 
     case LED_COLOR_WHITE:
       return "WHITE";
@@ -1570,32 +1661,32 @@ String enumColors(int color){
   }
 }
 
-int enumPorts(String portName){
+int enumPorts(String portName) {
 
   //Remove case sensitivity
   portName.toUpperCase();
 
-  if(portName == "PORT_A") {
+  if (portName == "PORT_A") {
     return PORT_A;
   };
 
-  if(portName == "PORT_B") {
+  if (portName == "PORT_B") {
     return PORT_B;
   };
 
-  if(portName == "PORT_C") {
+  if (portName == "PORT_C") {
     return PORT_C;
   };
 
-  if(portName == "PORT_D") {
+  if (portName == "PORT_D") {
     return PORT_D;
   };
 
-  if(portName == "PORT_E") {
+  if (portName == "PORT_E") {
     return PORT_E;
   };
 
-  if(portName == "PORT_F") {
+  if (portName == "PORT_F") {
     return PORT_F;
   };
 
@@ -1603,9 +1694,9 @@ int enumPorts(String portName){
   return 0;
 }
 
-String enumPorts(int port){
-  
-  switch(port){
+String enumPorts(int port) {
+
+  switch (port) {
 
     case PORT_A:
       return "PORT_A";

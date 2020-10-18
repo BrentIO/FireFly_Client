@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>FireFly Switch Bootstrap</title>
+        <link rel="stylesheet" href="bootstrap.min.css">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <script src="jquery.min.js"></script>
+        <script>
+
+            var deviceName;
+            var firmwareVersion;
+
+            $(document).ready(function(){
+
+                //Get the bootstrap from the server
+                $.ajax({
+
+                    type: 'GET',
+                    url: "./api/deviceName",
+
+                    success: function(data) {
+
+                        deviceName = data['deviceName'];
+                        setDeviceName();
+
+                    },
+
+                    error: function(data){
+                        alert("Error: Unable to retrieve device name from switch.");
+                        console.log(data);
+                    }
+
+                });
+
+                //Get the bootstrap from the server
+                $.ajax({
+
+                    type: 'GET',
+                    url: "./api/firmwareVersion",
+
+                    success: function(data) {
+
+                        firmwareVersion = data['firmwareVersion'];
+                        setFirmwareVersion();
+
+                    },
+
+                    error: function(data){
+                        alert("Error: Unable to retrieve firmware version from switch.");
+                        console.log(data);
+                    }
+
+                });
+            })
+
+            function setDeviceName(){
+
+                document.getElementById("deviceName").innerHTML = deviceName;
+                document.getElementById("bootstrapURL").placeholder = document.getElementById("bootstrapURL").placeholder.replace("$DEVICENAME$", deviceName);
+
+            }
+
+            function setFirmwareVersion(){
+
+                document.getElementById("firmwareVersion").innerHTML = "<a href=\"./update\">Firmware Version: " + firmwareVersion + "</a>";
+
+            }
+
+            function setServerName(value){
+
+                var baseURL = "http://$SERVERNAME$/api/switch/$DEVICENAME$/bootstrap";
+
+                if(value == ""){
+                    value = "192.168.100.1";
+                }
+
+                value = value.replace("http://", "");
+                value = value.replace("/", "");
+                baseURL = baseURL.replace("$SERVERNAME$", value);
+                baseURL = baseURL.replace("$DEVICENAME$", deviceName);
+
+                document.getElementById("bootstrapURL").value = baseURL
+            }
+
+            
+            function toggleBootstrapURL(value){
+        
+                if(value == true){
+
+                    document.getElementById("bootstrapURLSection").style.display = 'block';
+
+                }else{
+                    document.getElementById("bootstrapURLSection").style.display = 'none';
+                }
+                            
+            }
+
+
+
+        </script>
+
+    <body>
+        <div class="container">
+            <h1 class="text-center">FireFly Switch</h1>
+            <h3 class="text-center"><div id="deviceName"></div></h3>
+            <br>
+        <div class="form-group">
+            <form name="frmMain" action="/bootstrap" method="POST">
+                <label for="ssid">WiFi SSID (Case Sensitive)</label>
+                <input id="ssid" type="text" class="form-control">
+                <br>
+                <label for="wpaKey">WPA Key (Case Sensitive)</label>
+                <input id="wpaKey" type="text" class="form-control">
+                <br>
+                <label for="serverName">Server Name/IP</label>
+                <input id="serverName" placeholder="192.168.100.1" type="text" class="form-control" onchange="setServerName(this.value)">
+                <br>
+                <label for="chkOverride">Override URL</label>
+                <input id="chkOverride" type="checkbox" onchange="toggleBootstrapURL(this.checked)">
+                <br>
+            <div id="bootstrapURLSection" style="display:none;">
+                <br>
+                <label for="bootstrapURL" >Bootstrap URL</label>
+                <input id="bootstrapURL" placeholder="http://192.168.100.1/api/switch/$DEVICENAME$/bootstrap" type="text" class="form-control">
+                <br>
+                </div>
+                <button type="submit" class="btn btn-primary form-control" id="submitButton">Bootstrap</button>
+            </form>
+        </div>
+            <br>
+            <div id="firmwareVersion" class="text-center"></div>
+        </div>
+    </body>
+</html>
