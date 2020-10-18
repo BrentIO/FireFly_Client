@@ -1269,100 +1269,54 @@ void handleWebGet(String uri){
 }
 
 
-
-
-void wwwHandleRoot() {
-  if (webServer.hasArg("cmdProvision")) {
-    wwwHandleSubmit();
-  }
-  else {
-
-    char temp[2000];
-
-    snprintf(temp, 2000,
-             "<!DOCTYPE html>\
-    <html>\
-      <head>\
-        <meta http-equiv=\"content-type\" content=\"text/html; charset=UTF-8\">\
-        <title>Device Provisioning</title>\
-        <style>\
-          * {font-family: \"Lucida Sans Unicode\", \"Lucida Grande\", sans-serif; }\
-          body {font-size: 1em; color: #81D8D0; background-color: #363636;}\
-          a {color: #81D8D0;}\
-          input {width: 100%%; height: 30px; font-size: 1em; color: #363636;}\
-          #firmwareVersion {font-size: 0.5em; position: fixed; bottom: 0; right: 0; }\
-        </style>\
-      </head>\
-      <body>\
-        <p style=\"text-align: center; font-size: 1.5em;\">FireFly Client<p><p style=\"font-size: 1em; text-align: center; color: #d881b1;\">Device Name: %s<br>MAC Address: %s</p>\
-        <form name=\"frmMain\" action=\"/\" method=\"POST\">\
-        <label>SSID (Case Sensitive)</label><input name=\"txtSSID\" type=\"text\"><br>\
-        <label>WPA Key (Case Sensitive)</label><input name=\"txtWpaKey\" type=\"text\"><br>\
-        <label>Bootstrap URL (use FQDN)</label><input name=\"txtBootstrapURL\" value=\"http://server/%s.json\" type=\"text\"><br>\
-        <br>\
-        <center><input name=\"cmdProvision\" value=\"Provision\" type=\"submit\" style=\"width: 50%%; background-color: #81D8D0;\"></center>\
-        </form>\
-        <div id=\"firmwareVersion\"><a href=\"./update\">Firmware Version: %d</a></div>\
-      </body>\
-    </html>", settings.deviceName.c_str(), settings.network.machineMacAddress.c_str(), settings.deviceName.c_str(), firmwareVersion);
-
-    webServer.send(200, "text/html", temp);
-  }
-}
-
 void wwwHandleSubmit() {
 
-  String message;
+  //Make sure we have all of the arguments we need
+  if(webServer.hasArg("ssid") == false || webServer.hasArg("wpaKey") == false || webServer.hasArg("bootstrapURL") == false){
 
-  Serial.println("submit received");
-
-  for (int i = 0; i < webServer.args(); i++) {
-
-    message = "ArrayPos" + (String)i + " –> ";
-    message += webServer.argName(i) + ": ";
-    message += webServer.arg(i) + "\n";
-
-    Serial.println(message);
-
-  } 
-
-
-  return;
-
-  //See if we're trying to submit for the provisioning page
-  if (webServer.hasArg("cmdProvision")) {
-
-    String SSID = webServer.arg("txtSSID");
-    String wpaKey = webServer.arg("txtWpaKey");
-    String bootstrapURL = webServer.arg("txtBootstrapURL");
-
-    //Trim each of the inputs
-    SSID.trim();
-    wpaKey.trim();
-    bootstrapURL.trim();
-
-    webServer.sendHeader("Connection", "close");
-    webServer.sendHeader("Access-Control-Allow-Origin", "*");
-    webServer.send(200, "text/plain", "OK\r\n");
-
-    //Give the system time to send the data back to the caller before attempting to provision
-    delay(1000);
-
-    //Attempt to bootstrap
-    attemptProvision(SSID, wpaKey, bootstrapURL);
+    //There was an error on the posting form that not all the fields were sent
+    webServer.sendHeader(F("Connection"), F("close"));
+    webServer.sendHeader(F("Access-Control-Allow-Origin"), "*");
+    webServer.send(406, F("text/plain"), F("Insufficient parameters\r\n"));
 
     return;
+
   }
 
-  //if...some other post page
+  //Clean up the input
+  String SSID = webServer.arg("ssid");
+  String wpaKey = webServer.arg("wpaKey");
+  String bootstrapURL = webServer.arg("bootstrapURL");
 
+  //Trim each of the inputs
+  SSID.trim();
+  wpaKey.trim();
+  bootstrapURL.trim();
 
-  //If we made it here, we have an unhandled error
-  webServer.sendHeader("Connection", "close");
-  webServer.sendHeader("Access-Control-Allow-Origin", "*");
-  webServer.send(400, "text/plain", "Unknown Request\r\n");
+  if(SSID.length() == 0 || wpaKey.length() == 0 || bootstrapURL.length() == 0){
+
+    //One or more fields were empty
+    webServer.sendHeader(F("Connection"), F("close"));
+    webServer.sendHeader(F("Access-Control-Allow-Origin"), "*");
+    webServer.send(406, F("text/plain"), F("Empty parameters\r\n"));
+
+    return;
+
+  }
+
+  webServer.sendHeader(F("Connection"), F("close"));
+  webServer.sendHeader(F("Access-Control-Allow-Origin"), "*");
+  webServer.send(200, F("text/plain"), F("OK\r\n"));
+  webServer.close();
+
+  //Give the system time to send the data back to the caller before attempting to provision
+  delay(1000);
+
+  //Attempt to bootstrap
+  attemptProvision(SSID, wpaKey, bootstrapURL);
 
 }
+
 
 boolean retrieveBootstrap(String bootstrapURL) {
 
@@ -1471,21 +1425,6 @@ void restoreAllLEDs() {
     setBrightness(&leds[i], leds[i].styleData);
   }
 
-}
-
-void wwwHandleNotFound() {
-  String message = "File Not Found\n\n";
-  message += "URI: ";
-  message += webServer.uri();
-  message += "\nMethod: ";
-  message += (webServer.method() == HTTP_GET) ? "GET" : "POST";
-  message += "\nArguments: ";
-  message += webServer.args();
-  message += "\n";
-  for (uint8_t i = 0; i < webServer.args(); i++) {
-    message += " " + webServer.argName(i) + ": " + webServer.arg(i) + "\n";
-  }
-  webServer.send(404, "text/plain", message);
 }
 
 
