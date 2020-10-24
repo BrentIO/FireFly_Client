@@ -630,12 +630,12 @@ void handleGlobalEventTopic(String topic, String payload) {
     }
   }
 
-  if (messageType == F("COLOR_NUMERIC")) {
+  if (messageType == "COLOR_NUMERIC") {
 
     //Find the button
     for (int i = 0; i < countOfLEDs; i++) {
 
-      if (leds[i].color == enumColors(messageActor)) {
+      if (leds[i].color == messageActor) {
 
         //If the LED is currently snoring, make it stop
         if (leds[i].style == STYLE_SNORE) {
@@ -653,12 +653,12 @@ void handleGlobalEventTopic(String topic, String payload) {
     }
   }
 
-  if (messageType == F("COLOR_NAMED")) {
+  if (messageType == "COLOR_NAMED") {
 
     //Find the button
     for (int i = 0; i < countOfLEDs; i++) {
 
-      if (leds[i].color == enumColors(messageActor)) {
+      if (leds[i].color == messageActor) {
 
         //If the LED is currently snoring, make it stop
         if (leds[i].style == STYLE_SNORE) {
@@ -676,12 +676,12 @@ void handleGlobalEventTopic(String topic, String payload) {
     }
   }
 
-  if (messageType == F("COLOR_BLINK")) {
+  if (messageType == "COLOR_BLINK") {
 
     //Find the button
     for (int i = 0; i < countOfLEDs; i++) {
 
-      if (leds[i].color == enumColors(messageActor)) {
+      if (leds[i].color == messageActor) {
 
         //Toggle Blink
         if (leds[i].style != STYLE_BLINK) {
@@ -704,12 +704,12 @@ void handleGlobalEventTopic(String topic, String payload) {
     }
   }
 
-  if (messageType == F("COLOR_SNORE")) {
+  if (messageType == "COLOR_SNORE") {
 
     //Find the button
     for (int i = 0; i < countOfLEDs; i++) {
 
-      if (leds[i].color == enumColors(messageActor)) {
+      if (leds[i].color == messageActor) {
 
         //Toggle Snore
         if (leds[i].style != STYLE_SNORE) {
@@ -1152,7 +1152,7 @@ void readEEPROMToRAM() {
 
     leds[i].pin = enumPorts(jsonDoc["buttons"][i]["port"].as<String>());
     leds[i].name = jsonDoc["buttons"][i]["name"].as<String>();
-    leds[i].color = enumColors(jsonDoc["buttons"][i]["led"]["color"].as<String>());
+    leds[i].color = jsonDoc["buttons"][i]["led"]["color"].as<String>();
 
     //Set the number of defined intensities
     leds[i].countOfDefinedBrightness = jsonDoc["buttons"][i]["led"]["intensity"].size();
