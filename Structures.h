@@ -41,15 +41,15 @@ typedef struct structSettings {
 
 typedef struct structLED {
   int pin;
-  char name[24];
-  char color[20];
+  String name;
+  String color;
   int illumination;
   int style;
   int styleData;
   int countOfDefinedBrightness;
 
   struct structBrightness {
-    char name[20];
+    String name;
     int illumination;
   } definedBrightness[8];
 
