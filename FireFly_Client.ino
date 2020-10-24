@@ -8,7 +8,7 @@
 #include <ESP8266mDNS.h>
 #include <ESP8266HTTPUpdateServer.h>
 #include "Structures.h"
-#include <FS.h>   // Include the SPIFFS library
+#include <FS.h>   // Include the SPIFFS library, download from https://github.com/esp8266/arduino-esp8266fs-plugin
 
 const int firmwareVersion = 30;
 
@@ -402,7 +402,7 @@ void handleEventTopic(String topic, String payload) {
   //Find the button
   for (int i = 0; i < countOfLEDs; i++) {
 
-    if (leds[i].alias == messageActor) {
+    if (leds[i].name == messageActor) {
 
       //See if we are opening or closing
       if (payload == "ON") {
@@ -504,7 +504,7 @@ void handleGlobalEventTopic(String topic, String payload) {
     //Find the button
     for (int i = 0; i < countOfLEDs; i++) {
 
-      if (leds[i].alias == messageActor) {
+      if (leds[i].name == messageActor) {
 
         //See if we are opening or closing
         if (messageValue == F("CLOSED")) {
@@ -539,7 +539,7 @@ void handleGlobalEventTopic(String topic, String payload) {
     //Find the button
     for (int i = 0; i < countOfLEDs; i++) {
 
-      if (leds[i].alias == messageActor) {
+      if (leds[i].name == messageActor) {
 
         //If the LED is currently snoring, make it stop
         if (leds[i].style == STYLE_SNORE) {
@@ -562,7 +562,7 @@ void handleGlobalEventTopic(String topic, String payload) {
     //Find the button
     for (int i = 0; i < countOfLEDs; i++) {
 
-      if (leds[i].alias == messageActor) {
+      if (leds[i].name == messageActor) {
 
         //If the LED is currently snoring, make it stop
         if (leds[i].style == STYLE_SNORE) {
@@ -585,7 +585,7 @@ void handleGlobalEventTopic(String topic, String payload) {
     //Find the button
     for (int i = 0; i < countOfLEDs; i++) {
 
-      if (leds[i].alias == messageActor) {
+      if (leds[i].name == messageActor) {
 
         //Toggle Blink
         if (leds[i].style != STYLE_BLINK) {
@@ -611,7 +611,7 @@ void handleGlobalEventTopic(String topic, String payload) {
     //Find the button
     for (int i = 0; i < countOfLEDs; i++) {
 
-      if (leds[i].alias == messageActor) {
+      if (leds[i].name == messageActor) {
 
         //Toggle Snore
         if (leds[i].style != STYLE_SNORE) {
@@ -841,7 +841,7 @@ void reconnectMQTT() {
       //Subscribe to each LED button press topic
       for (int i = 0; i < countOfLEDs; i++) {
 
-        createSubscription(settings.mqttServer.eventTopic + leds[i].alias);
+        createSubscription(settings.mqttServer.eventTopic + leds[i].name);
 
       }
 
@@ -991,11 +991,11 @@ void setBrightness(structLED *ptrLed, String intensity) {
   intensity.trim();
 
   //Find the intensity requested
-  for (int i = 0; i < ptrLed->countOfDefinedIntensity; i++) {
+  for (int i = 0; i < ptrLed->countOfDefinedBrightness; i++) {
 
-    if (ptrLed->definedIntensity[i].alias == intensity) {
+    if (ptrLed->definedBrightness[i].name == intensity) {
 
-      ptrLed->illumination = calculateBrightness(ptrLed->definedIntensity[i].illumination);
+      ptrLed->illumination = calculateBrightness(ptrLed->definedBrightness[i].illumination);
 
     }
   }
@@ -1151,29 +1151,23 @@ void readEEPROMToRAM() {
   for (int i = 0; i < countOfLEDs; i++) {
 
     leds[i].pin = enumPorts(jsonDoc["buttons"][i]["port"].as<String>());
-    leds[i].alias = jsonDoc["buttons"][i]["name"].as<String>();
+    leds[i].name = jsonDoc["buttons"][i]["name"].as<String>();
     leds[i].color = enumColors(jsonDoc["buttons"][i]["led"]["color"].as<String>());
 
     //Set the number of defined intensities
-    leds[i].countOfDefinedIntensity = jsonDoc["buttons"][i]["led"]["intensity"].size();
+    leds[i].countOfDefinedBrightness = jsonDoc["buttons"][i]["led"]["intensity"].size();
 
     //Only allow up to 8 defined intensities
-    if (leds[i].countOfDefinedIntensity > 8) {
-      leds[i].countOfDefinedIntensity = 8;
+    if (leds[i].countOfDefinedBrightness > 8) {
+      leds[i].countOfDefinedBrightness = 8;
     }
 
-    for (int j = 0; j < leds[i].countOfDefinedIntensity; j++) {
+    for (int j = 0; j < leds[i].countOfDefinedBrightness; j++) {
 
-      leds[i].definedIntensity[j].alias = jsonDoc["buttons"][i]["led"]["intensity"][j]["name"].as<String>();
-      leds[i].definedIntensity[j].illumination = jsonDoc["buttons"][i]["led"]["intensity"][j]["value"];
+      leds[i].definedBrightness[j].name = jsonDoc["buttons"][i]["led"]["intensity"][j]["name"].as<String>();
+      leds[i].definedBrightness[j].illumination = jsonDoc["buttons"][i]["led"]["intensity"][j]["value"];
 
-      leds[i].definedIntensity[j].alias.toUpperCase();
-      leds[i].definedIntensity[j].alias.trim();
     }
-
-    //Clean the data
-    leds[i].alias.toUpperCase();
-    leds[i].alias.trim();
 
   }
 }
@@ -1608,32 +1602,32 @@ String enumColors(int color) {
   }
 }
 
-int enumPorts(String portName) {
+int enumPorts(char* portName) {
 
   //Remove case sensitivity
   portName.toUpperCase();
 
-  if (portName == F("PORT_A")) {
+  if (portName == F("A")) {
     return PORT_A;
   };
 
-  if (portName == F("PORT_B")) {
+  if (portName == F("B")) {
     return PORT_B;
   };
 
-  if (portName == F("PORT_C")) {
+  if (portName == F("C")) {
     return PORT_C;
   };
 
-  if (portName == F("PORT_D")) {
+  if (portName == F("D")) {
     return PORT_D;
   };
 
-  if (portName == F("PORT_E")) {
+  if (portName == F("E")) {
     return PORT_E;
   };
 
-  if (portName == F("PORT_F")) {
+  if (portName == F("F")) {
     return PORT_F;
   };
 
@@ -1641,30 +1635,30 @@ int enumPorts(String portName) {
   return 0;
 }
 
-String enumPorts(int port) {
+char* enumPorts(int port) {
 
   switch (port) {
 
     case PORT_A:
-      return F("PORT_A");
+      return "A";
       break;
     case PORT_B:
-      return F("PORT_B");
+      return "B";
       break;
     case PORT_C:
-      return F("PORT_C");
+      return "C";
       break;
     case PORT_D:
-      return F("PORT_D");
+      return "D";
       break;
     case PORT_E:
-      return F("PORT_E");
+      return "E";
       break;
     case PORT_F:
-      return F("PORT_F");
+      return "F";
       break;
     default:
-      return F("UNKNOWN");
+      return "UNKNOWN";
       break;
   }
 }
