@@ -429,7 +429,7 @@ void handleEventTopic(String topic, String payload) {
         }
       }
 
-      if (payload == F("MINIMUM") || payload == F("MAXIMUM")) {
+      if (payload == "MINIMUM" || payload == "MAXIMUM") {
 
         //Remember the current illumination value
         leds[i].styleData = leds[i].illumination;
@@ -507,7 +507,7 @@ void handleGlobalEventTopic(String topic, String payload) {
       if (leds[i].name == messageActor) {
 
         //See if we are opening or closing
-        if (messageValue == F("CLOSED")) {
+        if (messageValue == "CLOSED") {
 
           //Remember the current illumination value
           leds[i].styleData = leds[i].illumination;
@@ -516,7 +516,7 @@ void handleGlobalEventTopic(String topic, String payload) {
           setBrightness(&leds[i], F("OFF"));
         }
 
-        if (messageValue == F("OPEN")) {
+        if (messageValue == "OPEN") {
 
           if (leds[i].styleData != 0) {
 
@@ -534,7 +534,7 @@ void handleGlobalEventTopic(String topic, String payload) {
     }
   }
 
-  if (messageType == F("BUTTON_NUMERIC")) {
+  if (messageType == "BUTTON_NUMERIC") {
 
     //Find the button
     for (int i = 0; i < countOfLEDs; i++) {
@@ -557,7 +557,7 @@ void handleGlobalEventTopic(String topic, String payload) {
     }
   }
 
-  if (messageType == F("BUTTON_NAMED")) {
+  if (messageType == "BUTTON_NAMED") {
 
     //Find the button
     for (int i = 0; i < countOfLEDs; i++) {
@@ -580,7 +580,7 @@ void handleGlobalEventTopic(String topic, String payload) {
     }
   }
 
-  if (messageType == F("BUTTON_BLINK")) {
+  if (messageType == "BUTTON_BLINK") {
 
     //Find the button
     for (int i = 0; i < countOfLEDs; i++) {
@@ -606,7 +606,7 @@ void handleGlobalEventTopic(String topic, String payload) {
     }
   }
 
-  if (messageType == F("BUTTON_SNORE")) {
+  if (messageType == "BUTTON_SNORE") {
 
     //Find the button
     for (int i = 0; i < countOfLEDs; i++) {
@@ -728,7 +728,7 @@ void handleGlobalEventTopic(String topic, String payload) {
     }
   }
 
-  if (messageType == F("GLOBAL_NUMERIC")) {
+  if (messageType == "GLOBAL_NUMERIC") {
 
     //Iterate through the buttons
     for (int i = 0; i < countOfLEDs; i++) {
@@ -748,7 +748,7 @@ void handleGlobalEventTopic(String topic, String payload) {
     }
   }
 
-  if (messageType == F("GLOBAL_NAMED")) {
+  if (messageType == "GLOBAL_NAMED") {
     //Iterate through the buttons
     for (int i = 0; i < countOfLEDs; i++) {
 
@@ -768,7 +768,7 @@ void handleGlobalEventTopic(String topic, String payload) {
 
   }
 
-  if (messageType == F("GLOBAL_BLINK")) {
+  if (messageType == "GLOBAL_BLINK") {
 
     //Find the button
     for (int i = 0; i < countOfLEDs; i++) {
@@ -791,7 +791,7 @@ void handleGlobalEventTopic(String topic, String payload) {
     }
   }
 
-  if (messageType == F("GLOBAL_SNORE")) {
+  if (messageType == "GLOBAL_SNORE") {
 
     //Find the button
     for (int i = 0; i < countOfLEDs; i++) {
@@ -1223,13 +1223,13 @@ String getContentType(String filename) {
 void handleWebGet(String uri){
 
   //Return the device name if requested
-  if(uri == F("/api/deviceName")){
+  if(uri == "/api/deviceName"){
     webServer.send(200,F("application/json"),"{\"deviceName\":\"" + settings.deviceName + "\"}");
     return;
   }
 
   //Return the firmware version if requested
-  if(uri == F("/api/firmwareVersion")){
+  if(uri == "/api/firmwareVersion"){
     webServer.send(200,F("application/json"),"{\"firmwareVersion\":\"" + (String)firmwareVersion + "\"}");
     return;
   }
@@ -1547,87 +1547,33 @@ void checkFirmwareUpgrade() {
   httpClient.end();
 }
 
-int enumColors(String colorName) {
 
-  //Remove case sensitivity
-  colorName.toUpperCase();
-
-  if (colorName == "WHITE") {
-    return LED_COLOR_WHITE;
-  };
-
-  if (colorName == "BLUE") {
-    return LED_COLOR_BLUE;
-  };
-
-  if (colorName == "RED") {
-    return LED_COLOR_RED;
-  };
-
-  if (colorName == "YELLOW") {
-    return LED_COLOR_YELLOW;
-  };
-
-  if (colorName == "GREEN") {
-    return LED_COLOR_GREEN;
-  };
-
-  //Default
-  return 0;
-
-}
-
-String enumColors(int color) {
-
-  switch (color) {
-
-    case LED_COLOR_WHITE:
-      return "WHITE";
-      break;
-    case LED_COLOR_BLUE:
-      return "BLUE";
-      break;
-    case LED_COLOR_RED:
-      return "RED";
-      break;
-    case LED_COLOR_YELLOW:
-      return "YELLOW";
-      break;
-    case LED_COLOR_GREEN:
-      return "GREEN";
-      break;
-    default:
-      return "UNKNOWN";
-      break;
-  }
-}
-
-int enumPorts(char* portName) {
+int enumPorts(String portName) {
 
   //Remove case sensitivity
   portName.toUpperCase();
 
-  if (portName == F("A")) {
+  if (portName == "A") {
     return PORT_A;
   };
 
-  if (portName == F("B")) {
+  if (portName == "B") {
     return PORT_B;
   };
 
-  if (portName == F("C")) {
+  if (portName == "C") {
     return PORT_C;
   };
 
-  if (portName == F("D")) {
+  if (portName == "D") {
     return PORT_D;
   };
 
-  if (portName == F("E")) {
+  if (portName == "E") {
     return PORT_E;
   };
 
-  if (portName == F("F")) {
+  if (portName == "F") {
     return PORT_F;
   };
 
