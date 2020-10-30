@@ -12,20 +12,13 @@
 
 const int firmwareVersion = 30;
 
-/* Define the LED colors */
-const int LED_COLOR_WHITE = 0;
-const int LED_COLOR_BLUE = 1;
-const int LED_COLOR_RED = 2;
-const int LED_COLOR_YELLOW = 3;
-const int LED_COLOR_GREEN = 4;
-
-/* These are defined by the physical layout of the board */
-const int PORT_A = D0;
-const int PORT_B = D1;
-const int PORT_C = D2;
-const int PORT_D = D3;
-const int PORT_E = D4;
-const int PORT_F = D5;
+/* These are defined by the physical layout of the board by GPIO Number */
+const int PORT_A = 5;
+const int PORT_B = 4;
+const int PORT_C = 14;
+const int PORT_D = 12;
+const int PORT_E = 13;
+const int PORT_F = 15;
 const int FACTORY_RESET = 10;
 
 /* Define the LED style, where blink is binary 0/100%; snore is 0-100-0% */
@@ -55,101 +48,9 @@ ESP8266HTTPUpdateServer httpUpdater; //HTTP server client to handle OTA updates
 void setup() {
 
   Serial.begin(115200);
-/*
-  //Set the number of LED's to 6
-  countOfLEDs = 6;
-
-  leds[0].pin = PORT_A;
-  leds[1].pin = PORT_B;
-  leds[2].pin = PORT_C;
-  leds[3].pin = PORT_D;
-  leds[4].pin = PORT_E;
-  leds[5].pin = PORT_F;
-
-  for(int i=0; i < countOfLEDs; i++){
-
-    pinMode(leds[i].pin, OUTPUT);
-    setBrightness(&leds[i], int(PWMRANGE/16));
-
-  }
-
-  setBrightness(&leds[0], PWMRANGE);
-  blinkLastHandled = millis();
-
-  return;*/
-
-  //Set the firmware version
-  settings.firmware.version = firmwareVersion;
 
   //Set pin FACTORY_RESET to pullup
   pinMode(FACTORY_RESET, INPUT_PULLUP);
-
-  //Get the MAC address
-  settings.network.machineMacAddress = WiFi.macAddress();
-  settings.network.machineMacAddress.toUpperCase();
-
-  //Set the device name from the MAC address
-  settings.deviceName = settings.network.machineMacAddress;
-  settings.deviceName.replace(":", "");
-
-  //Set the hostname
-  WiFi.hostname("FireFly-" + settings.deviceName);
-
-  //Set the default refresh seconds for firmware and bootstrap
-  settings.bootstrap.refreshMilliseconds = 3600000;
-  settings.firmware.refreshMilliseconds = 3600000;
-  settings.bootstrap.lastHandled = 0;
-  settings.firmware.lastHandled = 0;
-
-  //Check the provisioning status
-  checkDeviceProvisioned();
-
-  //Set the device's current mode depending on if it is provisioned or not
-  if (settings.deviceIsProvisioned == false) {
-
-    //Configure for provisioning mode
-    setupProvisioningMode();
-
-  } else {
-
-    //Read the data from EEPROM
-    readEEPROMToRAM();
-
-    //Attempt to connect to the WiFi Network as a client
-    WiFi.mode(WIFI_STA);
-
-    delay(500);
-
-    if (WiFi.status() != WL_CONNECTED) {
-      WiFi.begin(settings.network.ssidName.c_str(), settings.network.wpaKey.c_str());
-    }
-
-    //Print output while waiting for WiFi to connect
-    while (WiFi.status() != WL_CONNECTED) {
-      delay(500);
-    }
-
-    //Configure the mqtt Client
-    mqttClient.setServer(settings.mqttServer.serverName.c_str(), settings.mqttServer.port);
-    mqttClient.setCallback(mqttCallback);
-
-    //Subscribe to the required MQTT topics
-    mqttClient.subscribe(settings.mqttServer.controlTopic.c_str());
-    mqttClient.subscribe(settings.mqttServer.clientTopic.c_str());
-    mqttClient.subscribe(settings.mqttServer.eventTopic.c_str());
-
-    //Setup the LEDs for use
-    setupLEDs();
-
-  }
-
-}
-
-void loop() {
-
-  //rotateLEDs();
-
-  //return;
 
   //Determine if the FACTORY_RESET has been pulled low, if so, blow away the EEPROM
   if (digitalRead(FACTORY_RESET) == LOW) {
@@ -162,44 +63,76 @@ void loop() {
 
   }
 
-  //See which loop we should execute
+  //Set the device name from the MAC address
+  settings.deviceName = WiFi.macAddress();
+  settings.deviceName.toUpperCase();
+  settings.deviceName.replace(":", "");
+
+  //Set the hostname
+  WiFi.hostname("FireFly-" + settings.deviceName);
+
+  //Check the provisioning status
+  checkDeviceProvisioned();
+
+  //Set the device's current mode depending on if it is provisioned or not
   if (settings.deviceIsProvisioned == false) {
 
-    //Setup a client handler
-    webServer.handleClient();
+    //Configure for provisioning mode
+    setupProvisioningMode();
 
   } else {
 
-    //The device has been provisioned, run the normal processes
-    if (!mqttClient.connected()) {
-      reconnectMQTT();
-    }
-
-    mqttClient.loop();
-
-    //Blink the LEDs that need to be blinkLEDs if it's time to do so
-    if ((millis() - blinkLastHandled) > blinkEveryMilliseconds) {
-      blinkLEDs();
-    }
-
-    //Only snore every 40th clock cycle
-    if (millis() % 60 == 0) {
-      //Snore the LEDs that need to be snored
-      snoreLEDs();
-    }
-
-    //See if it is time to send an unsolicited status message
-    if ((millis() - healthUpdateLastHandled) > healthUpdateEveryMilliseconds) {
-      handleHealth();
-    }
-
-    //See if it is time to get a new bootstrap
-    if ((millis() - settings.bootstrap.lastHandled) > settings.bootstrap.refreshMilliseconds) {
-      checkBootstrapUpgrade();
-    }
+    setupNormalMode();
 
   }
 
+}
+
+void loop() {
+
+  if(settings.deviceIsProvisioned == false){
+  
+    loopProvisioningMode();
+  
+  }else{
+  
+    loopNormalMode();
+  
+  }
+}
+
+
+void setupNormalMode(){
+
+  //Read the data from EEPROM
+  //readEEPROMToRAM();
+
+  //Attempt to connect to the WiFi Network as a client
+  WiFi.mode(WIFI_STA);
+
+  delay(500);
+
+  if (WiFi.status() != WL_CONNECTED) {
+    WiFi.begin(settings.network.ssidName.c_str(), settings.network.wpaKey.c_str());
+  }
+
+  //Print output while waiting for WiFi to connect
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+  }
+
+  //Configure the mqtt Client
+  mqttClient.setServer(settings.mqttServer.serverName.c_str(), settings.mqttServer.port);
+  mqttClient.setCallback(mqttCallback);
+
+  //Subscribe to the required MQTT topics
+  mqttClient.subscribe(settings.mqttServer.controlTopic.c_str());
+  mqttClient.subscribe(settings.mqttServer.clientTopic.c_str());
+  mqttClient.subscribe(settings.mqttServer.eventTopic.c_str());
+
+  //Setup the LEDs for use
+  setupLEDs();
+  
 }
 
 void blinkLEDs() {
@@ -367,7 +300,7 @@ void handleMQTTMessageReceived(String topic, String payload) {
   //See if the payload requests a firmware update check
   if (topic == settings.mqttServer.controlTopic + "/firmwareUpdate") {
 
-    checkFirmwareUpgrade();
+    checkFirmwareUpgrade("TODO:GET_FROM_BODY");
 
     return;
   }
@@ -375,7 +308,7 @@ void handleMQTTMessageReceived(String topic, String payload) {
   //See if the payload requests a bootstrap update check
   if (topic == settings.mqttServer.controlTopic + "/bootstrapUpdate") {
 
-    checkBootstrapUpgrade();
+    //checkBootstrapUpgrade();
 
     return;
   }
@@ -822,7 +755,7 @@ void reconnectMQTT() {
   while (!mqttClient.connected()) {
 
     // Attempt to connect
-    if (mqttClient.connect(settings.network.machineMacAddress.c_str(), settings.mqttServer.username.c_str(), settings.mqttServer.password.c_str())) {
+    if (mqttClient.connect(settings.deviceName.c_str(), settings.mqttServer.username.c_str(), settings.mqttServer.password.c_str())) {
 
       restoreAllLEDs();
 
@@ -903,6 +836,9 @@ void checkDeviceProvisioned() {
      set the setting accordingly.
   */
 
+  settings.deviceIsProvisioned = false;
+  return;
+
   //Read the EEPROM starting at memory position 0
   if (EEPROMRead(0) == "true") {
 
@@ -923,6 +859,31 @@ void setupProvisioningMode() {
      Configures necessary items for when the device has not been provisioned.
   */
 
+  //Set the number of LED's to 6
+  countOfLEDs = 6;
+
+  //Set each LED output pin to the port number
+  leds[0].pin = PORT_A;
+  leds[1].pin = PORT_B;
+  leds[2].pin = PORT_C;
+  leds[3].pin = PORT_D;
+  leds[4].pin = PORT_E;
+  leds[5].pin = PORT_F;
+
+  //Set the LED to be an output and set the default brightness level while in provisioning mode
+  for(int i=0; i < countOfLEDs; i++){
+
+    pinMode(leds[i].pin, OUTPUT);
+    setBrightness(&leds[i], int(PWMRANGE/16));
+
+  }
+
+  //By default, turn off the LED on port A, since the rotation will start there
+  setBrightness(&leds[0], PWMRANGE);
+
+  //Set the last handled to now so that the rotation will begin immediately
+  blinkLastHandled = millis();
+
   //Set the default IP address, gateway, and subnet to use when in AP mode
   IPAddress ip(192, 168, 1, 1);
   IPAddress gateway(192, 168, 1, 1);
@@ -930,38 +891,86 @@ void setupProvisioningMode() {
 
   WiFi.softAPConfig(ip, gateway, subnet);
 
+  //Configure the device access point to be "FireFly-" + MAC address
   WiFi.softAP(("FireFly-" + settings.deviceName).c_str());
 
+  //Start spiffs FS, where the html files are stored
   SPIFFS.begin();
 
+  //Setup the web server to handle the POST request to the /bootstrap URL
   webServer.on(F("/bootstrap"), HTTP_POST, wwwHandleSubmit);
 
+ //Setup the webserver to handle all requests
   webServer.onNotFound([]() {
 
     //Determine the method handler
     switch(webServer.method()){
+      
       case HTTP_GET:
+      
+        //We only allow GET requests
         handleWebGet(webServer.uri());
+        
         break;
 
       default:
 
         //We don't know how to handle this method, return 400
         webServer.send(400);
+        
         break;
     }
 
   });
-  
+
+  //Set the MDNS name on the broadcast  
   MDNS.begin(settings.deviceName.c_str());
 
+  //Allow uploads of firmware through the web server
   httpUpdater.setup(&webServer);
 
   MDNS.addService("http", "tcp", 80);
 
+  //Start up the web server
   webServer.begin();
 
 }
+
+void loopProvisioningMode(){
+
+  //Setup a client handler
+  webServer.handleClient();
+
+  rotateLEDs();
+  
+}
+
+void loopNormalMode(){
+
+  //The device has been provisioned, run the normal processes
+  if (!mqttClient.connected()) {
+    reconnectMQTT();
+  }
+
+  mqttClient.loop();
+
+  //Blink the LEDs that need to be blinkLEDs if it's time to do so
+  if ((millis() - blinkLastHandled) > blinkEveryMilliseconds) {
+    blinkLEDs();
+  }
+
+  //Only snore every 40th clock cycle
+  if (millis() % 60 == 0) {
+    //Snore the LEDs that need to be snored
+    snoreLEDs();
+  }
+
+  //See if it is time to send an unsolicited status message
+  if ((millis() - healthUpdateLastHandled) > healthUpdateEveryMilliseconds) {
+    handleHealth();
+  }
+}
+  
 
 void setupLEDs(void) {
 
@@ -991,14 +1000,14 @@ void setBrightness(structLED *ptrLed, String intensity) {
   intensity.trim();
 
   //Find the intensity requested
-  for (int i = 0; i < ptrLed->countOfDefinedBrightness; i++) {
+  /*for (int i = 0; i < ptrLed->countOfDefinedBrightness; i++) {
 
     if (ptrLed->definedBrightness[i].name == intensity) {
 
       ptrLed->illumination = calculateBrightness(ptrLed->definedBrightness[i].illumination);
 
     }
-  }
+  }*/
 
   //Also consider binary ON (100) and OFF (0)
   if (intensity == "OFF") {
@@ -1095,82 +1104,6 @@ String EEPROMRead(int startPosition) {
 
 }
 
-void readEEPROMToRAM() {
-
-  //Create a jsonDocument object to deserialize into
-  DynamicJsonDocument jsonDoc(EEPROMLength);
-
-  //Deserialize the response
-  auto jsonParseError = deserializeJson(jsonDoc, EEPROMRead(EEPROMDataBegin));
-
-  if (jsonParseError) {
-    //Set the provision mode to false
-    EEPROMWrite("false", 0);
-    return;
-  }
-
-  //Store the settings
-  settings.bootstrap.version = jsonDoc["version"];
-  settings.friendlyName = jsonDoc["name"].as<String>();
-
-  settings.network.ssidName = jsonDoc["network"]["ssid"].as<String>();
-  settings.network.wpaKey = jsonDoc["network"]["key"].as<String>();
-
-  settings.mqttServer.serverName = jsonDoc["mqtt"]["serverName"].as<String>();
-  settings.mqttServer.port = jsonDoc["mqtt"]["port"];
-  settings.mqttServer.username = jsonDoc["mqtt"]["username"].as<String>();
-  settings.mqttServer.password = jsonDoc["mqtt"]["password"].as<String>();
-
-  settings.mqttServer.controlTopic = jsonDoc["mqtt"]["topics"]["management"].as<String>();
-  settings.mqttServer.clientTopic = jsonDoc["mqtt"]["topics"]["client"].as<String>();
-  settings.mqttServer.eventTopic = jsonDoc["mqtt"]["topics"]["event"].as<String>();
-
-  settings.firmware.url = jsonDoc["firmware"]["url"].as<String>();
-  settings.firmware.refreshMilliseconds = jsonDoc["firmware"]["refreshMilliseconds"];
-
-  settings.bootstrap.url = jsonDoc["bootstrap"]["url"].as<String>();
-  settings.bootstrap.refreshMilliseconds = jsonDoc["bootstrap"]["refreshMilliseconds"];
-
-  //Replace the placeholder values, if they exist
-  settings.mqttServer.username.replace("$DEVICENAME$", settings.deviceName);
-  settings.mqttServer.password.replace("$DEVICENAME$", settings.deviceName);
-  settings.mqttServer.controlTopic.replace("$DEVICENAME$", settings.deviceName);
-  settings.mqttServer.clientTopic.replace("$DEVICENAME$", settings.deviceName);
-  settings.firmware.url.replace("$DEVICENAME$", settings.deviceName);
-  settings.bootstrap.url.replace("$DEVICENAME$", settings.deviceName);
-
-  //Set the array size
-  countOfLEDs = jsonDoc["buttons"].size();
-
-  //Only allow up to 6 LEDs
-  if (countOfLEDs > 6) {
-    countOfLEDs = 6;
-  }
-
-  //Get the data for each button defined
-  for (int i = 0; i < countOfLEDs; i++) {
-
-    leds[i].pin = enumPorts(jsonDoc["buttons"][i]["port"].as<String>());
-    leds[i].name = jsonDoc["buttons"][i]["name"].as<String>();
-    leds[i].color = jsonDoc["buttons"][i]["led"]["color"].as<String>();
-
-    //Set the number of defined intensities
-    leds[i].countOfDefinedBrightness = jsonDoc["buttons"][i]["led"]["intensity"].size();
-
-    //Only allow up to 8 defined intensities
-    if (leds[i].countOfDefinedBrightness > 8) {
-      leds[i].countOfDefinedBrightness = 8;
-    }
-
-    for (int j = 0; j < leds[i].countOfDefinedBrightness; j++) {
-
-      leds[i].definedBrightness[j].name = jsonDoc["buttons"][i]["led"]["intensity"][j]["name"].as<String>();
-      leds[i].definedBrightness[j].illumination = jsonDoc["buttons"][i]["led"]["intensity"][j]["value"];
-
-    }
-
-  }
-}
 
 void handleHealth() {
 
@@ -1178,16 +1111,13 @@ void handleHealth() {
   publishMQTT(settings.mqttServer.clientTopic + "/uptime", String(millis()));
 
   //Publish the OK status
-  publishMQTT(settings.mqttServer.clientTopic + "/status", "OK");
+  publishMQTT(settings.mqttServer.clientTopic + "/status", F("ONLINE"));
 
   //Publish the IP Address
   publishMQTT(settings.mqttServer.clientTopic + "/ip", WiFi.localIP().toString());
 
   //Publish the Firmware version
-  publishMQTT(settings.mqttServer.clientTopic + "/firmware", (String)settings.firmware.version);
-
-  //Publish the Bootstrap version
-  publishMQTT(settings.mqttServer.clientTopic + "/bootstrap", (String)settings.bootstrap.version);
+  publishMQTT(settings.mqttServer.clientTopic + "/firmware", (String)firmwareVersion);
 
   //Publish the device name
   publishMQTT(settings.mqttServer.clientTopic + "/deviceName", settings.deviceName);
@@ -1314,6 +1244,8 @@ void wwwHandleSubmit() {
 
 boolean retrieveBootstrap(String bootstrapURL) {
 
+  Serial.println("Attempting to retrieve bootstrap");
+
   HTTPClient httpClient;
 
   httpClient.begin(bootstrapURL);
@@ -1321,20 +1253,25 @@ boolean retrieveBootstrap(String bootstrapURL) {
   //See if we were successful in retrieving the bootstrap
   if (httpClient.GET() == HTTP_CODE_OK) {
 
+      Serial.println(httpClient.getString());
+
     //Write the response to the EEPROM
-    EEPROMWrite(httpClient.getString(), EEPROMDataBegin);
+    //EEPROMWrite(httpClient.getString(), EEPROMDataBegin);
 
     //Set the provision status
-    EEPROMWrite("true", 0);
+    //EEPROMWrite("true", 0);
 
     httpClient.end();
 
     //Re-Read the EEPROM into RAM
-    readEEPROMToRAM();
+    //readEEPROMToRAM();
 
-    return true;
+    //return true;
+    return false;
 
   } else {
+
+    Serial.println("Server returned " + httpClient.GET());
 
     return false;
   }
@@ -1342,6 +1279,8 @@ boolean retrieveBootstrap(String bootstrapURL) {
 }
 
 void attemptProvision(String SSID, String wpaKey, String bootstrapURL) {
+
+  Serial.println("Attempting provision\nSSID: [" + SSID + "]\nwpaKey: [" + wpaKey + "]\nBootstrap URL: [" + bootstrapURL + "]");
 
   //Kill the soft AP
   WiFi.softAPdisconnect(true);
@@ -1367,6 +1306,8 @@ void attemptProvision(String SSID, String wpaKey, String bootstrapURL) {
 
       //Restart the provisioning server
       setupProvisioningMode();
+
+      Serial.println("Unable to attach to WiFi");
 
       //Exit this
       return;
@@ -1421,77 +1362,11 @@ void restoreAllLEDs() {
 
 }
 
-
-void checkBootstrapUpgrade() {
-
-  //Create an http client to connect to the firmware server
-  HTTPClient httpClient;
-
-  httpClient.begin(settings.bootstrap.url);
-
-  //See if we get an HTTP 200/OK response
-  if (httpClient.GET() == HTTP_CODE_OK ) {
-    String jsonServerResponse = httpClient.getString();
-    httpClient.end();
-
-    //Create a jsonDocument object to deserialize into
-    DynamicJsonDocument jsonDoc(EEPROMLength);
-
-    //Deserialize the response
-    auto jsonParseError = deserializeJson(jsonDoc, jsonServerResponse);
-
-    if (jsonParseError) {
-
-      //Mark the check as handled
-      settings.bootstrap.lastHandled = millis();
-
-      return;
-    }
-
-    //Get the firmware version
-    int remoteVersion = jsonDoc["version"];
-
-    //Make sure we got a valid version number
-    if (remoteVersion == 0) {
-
-      publishMQTT(settings.mqttServer.clientTopic + "/status", F("Invalid Remote Bootstrap Version"));
-
-      //Mark the check as handled
-      settings.bootstrap.lastHandled = millis();
-
-      return;
-    }
-
-    //Check if the version requested is not the same as the one loaded (yes, we allow back flashing)
-    if (settings.bootstrap.version != remoteVersion) {
-
-      publishMQTT(settings.mqttServer.clientTopic + "/status", F("Updating Bootstrap"));
-
-      //Get the new bootstrap
-      if (retrieveBootstrap(settings.bootstrap.url) == true) {
-
-        publishMQTT(settings.mqttServer.clientTopic + "/status", F("Bootstrap Updated Successfully"));
-
-      } else {
-        publishMQTT(settings.mqttServer.clientTopic + "/status", F("Bootstrap Update Failed"));
-      }
-
-    }
-  }
-  else {
-    publishMQTT(settings.mqttServer.clientTopic + "/status", F("Bootstrap Update Failed"));
-  }
-
-  //Mark the check as handled
-  settings.bootstrap.lastHandled = millis();
-
-}
-
-void checkFirmwareUpgrade() {
+void checkFirmwareUpgrade(String url) {
 
   //Create an http client to connect to the firmware server
   HTTPClient httpClient;
-  httpClient.begin(settings.firmware.url);
+  httpClient.begin(url);
 
   int httpCode = httpClient.GET();
 

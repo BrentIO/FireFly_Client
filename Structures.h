@@ -1,59 +1,46 @@
+const unsigned int MAXIMUM_DEFINED_BRIGHTNESS = 8;
+
 /*******************************************************************************/
 /*        Structures used within this program in section below                 */
 /*******************************************************************************/
 
 typedef struct structSettings {
   bool deviceIsProvisioned;
-  String friendlyName;
-  String deviceName;
+  String friendlyName; //Max length: 32
+  String deviceName; //Max length: 16
 
   struct structNetwork {
-    String machineMacAddress;
-    String ssidName;
-    String wpaKey;
+    String ssidName; //Max length: 32
+    String wpaKey; //Max length: 32
   } network;
 
   struct structMqttServer {
-    String serverName;
+    String serverName; //Max length: 32
     int port;
-    String username;
-    String password;
-    String controlTopic;
-    String clientTopic;
-    String eventTopic;
+    String username; //Max length: 32
+    String password; //Max length: 32
+    String controlTopic; //Max length: 32
+    String clientTopic; //Max length: 32
+    String eventTopic; //Max length: 32
   } mqttServer;
 
-  struct structFirmware {
-    String url;
-    int version;
-    unsigned long refreshMilliseconds;
-    unsigned long lastHandled;
-  } firmware;
+};
 
-  struct structBootstrap {
-    String url;
-    int version;
-    unsigned long refreshMilliseconds;
-    unsigned long lastHandled;
-  } bootstrap;
-
+typedef struct structBrightness {
+  String name; //Max length: 20
+  int illumination;
 };
 
 typedef struct structLED {
   int pin;
-  String name;
-  String color;
+  String name; //Max length: 20
+  String color; //Max length: 20
   int illumination;
   int style;
   int styleData;
-  int countOfDefinedBrightness;
-
-  struct structBrightness {
-    String name;
-    int illumination;
-  } definedBrightness[8];
-
+  struct structBrightness definedBrightness[MAXIMUM_DEFINED_BRIGHTNESS];
 };
+
 
 /*******************************************************************************/
 /*        Simplified structures used for EEPROM I/O in section below           */
@@ -64,11 +51,8 @@ typedef struct _structSettings{
     char deviceName[17]; //Max length: 16
 
     struct _structNetwork{
-      byte macAddress[6];
-      IPAddress ip;
-      IPAddress dns;
-      IPAddress gateway;
-      IPAddress subnet;
+      char ssidName[33]; //Max length: 32
+      char wpaKey[33]; //Max length: 32
     } network;
 
     struct _structMqttServer{
@@ -80,6 +64,17 @@ typedef struct _structSettings{
       char controlTopic[33]; //Max length: 32
       char eventTopic[33]; //Max length: 32
     } mqttServer;
-
 };
 
+typedef struct _structBrightness {
+  char name[21]; //Max length: 20
+  unsigned int illumination;
+};
+
+typedef struct _structLED {
+  unsigned int pin;
+  char name[21]; //Max Length: 20
+  char color[21]; //Max Length: 20
+  int countOfDefinedBrightness;
+  struct _structBrightness definedBrightness[MAXIMUM_DEFINED_BRIGHTNESS];
+};
