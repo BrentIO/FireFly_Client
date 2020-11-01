@@ -45,6 +45,7 @@ PubSubClient mqttClient(espClient); //MQTT client binding to the ESP8266 WiFi
 ESP8266WebServer webServer(80); //Web server client to handle provisioning
 ESP8266HTTPUpdateServer httpUpdater; //HTTP server client to handle OTA updates
 
+
 void setup() {
 
   Serial.begin(115200);
@@ -87,6 +88,7 @@ void setup() {
   }
 
 }
+
 
 void loop() {
 
@@ -135,6 +137,7 @@ void setupNormalMode(){
   
 }
 
+
 void blinkLEDs() {
 
   //Find any LED's that should be blinking
@@ -159,6 +162,7 @@ void blinkLEDs() {
   //Set the blink handler
   blinkLastHandled = millis();
 }
+
 
 void snoreLEDs() {
 
@@ -199,6 +203,7 @@ void snoreLEDs() {
   }
 }
 
+
 void rotateLEDs(){
 
   //Only run this function every 1 second
@@ -234,6 +239,7 @@ void rotateLEDs(){
    
 }
 
+
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
   /* This function will handle all incoming requests for subscribed topics */
 
@@ -252,6 +258,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
 }
 
+
 void publishMQTT(String topic, String payload) {
   /*
      Sends the requested payload to the requested topic, and also broadcasts the message on the serial line.
@@ -264,6 +271,7 @@ void publishMQTT(String topic, String payload) {
   mqttClient.publish(String(topic).c_str(), String(payload).c_str());
 
 }
+
 
 void handleMQTTMessageReceived(String topic, String payload) {
   /*
@@ -325,6 +333,7 @@ void handleMQTTMessageReceived(String topic, String payload) {
   }
 
 }
+
 
 void handleEventTopic(String topic, String payload) {
 
@@ -399,6 +408,7 @@ void handleEventTopic(String topic, String payload) {
   }
 
 }
+
 
 void handleGlobalEventTopic(String topic, String payload) {
   /* Handles all of the business logic */
@@ -746,6 +756,7 @@ void handleGlobalEventTopic(String topic, String payload) {
   }
 }
 
+
 void reconnectMQTT() {
 
   //Ensure the LEDs are off
@@ -796,6 +807,7 @@ void reconnectMQTT() {
   }
 }
 
+
 boolean createSubscription(String topic) {
   /* A wrapper for the mqtt subscribe method */
 
@@ -810,6 +822,7 @@ boolean createSubscription(String topic) {
   }
 
 }
+
 
 int calculateBrightness(int brightnessPercentage) {
 
@@ -936,6 +949,7 @@ void setupProvisioningMode() {
 
 }
 
+
 void loopProvisioningMode(){
 
   //Setup a client handler
@@ -944,6 +958,7 @@ void loopProvisioningMode(){
   rotateLEDs();
   
 }
+
 
 void loopNormalMode(){
 
@@ -986,12 +1001,14 @@ void setupLEDs(void) {
   }
 }
 
+
 void setBrightness(structLED *ptrLed, int brightness) {
 
   ptrLed->illumination = brightness;
 
   analogWrite(ptrLed->pin, ptrLed->illumination);
 }
+
 
 void setBrightness(structLED *ptrLed, String intensity) {
 
@@ -1022,6 +1039,7 @@ void setBrightness(structLED *ptrLed, String intensity) {
   analogWrite(ptrLed->pin, ptrLed->illumination);
 
 }
+
 
 void setBrightness(structLED *ptrLed, int illumination, bool isIllumination) {
 
@@ -1054,6 +1072,7 @@ void EEPROMWrite(String stringToWrite, int startPosition) {
   EEPROM.commit();
 
 }
+
 
 String EEPROMRead(int startPosition) {
   /*
@@ -1127,6 +1146,7 @@ void handleHealth() {
 
 }
 
+
 String getContentType(String filename) {
 
   //Returns the content type for the given file
@@ -1149,6 +1169,7 @@ String getContentType(String filename) {
   //Not a recognized format, assume plain text
   return F("text/plain");
 }
+
 
 void handleWebGet(String uri){
 
@@ -1334,6 +1355,7 @@ void attemptProvision(String SSID, String wpaKey, String bootstrapURL) {
 
 }
 
+
 void turnOffAllLEDs() {
 
   //Turn off the LEDs
@@ -1351,6 +1373,7 @@ void turnOffAllLEDs() {
 
 }
 
+
 void restoreAllLEDs() {
 
   //Turn off the LEDs
@@ -1361,6 +1384,7 @@ void restoreAllLEDs() {
   }
 
 }
+
 
 void checkFirmwareUpgrade(String url) {
 
@@ -1455,6 +1479,7 @@ int enumPorts(String portName) {
   //Default
   return 0;
 }
+
 
 char* enumPorts(int port) {
 
