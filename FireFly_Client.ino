@@ -970,7 +970,7 @@ void loopNormalMode(){
   mqttClient.loop();
 
   //Blink the LEDs that need to be blinkLEDs if it's time to do so
-  if ((millis() - blinkLastHandled) > blinkEveryMilliseconds) {
+  if ((millis() - blinkLastHandled) > LED_BLINK_MS) {
     blinkLEDs();
   }
 
@@ -981,7 +981,7 @@ void loopNormalMode(){
   }
 
   //See if it is time to send an unsolicited status message
-  if ((millis() - healthUpdateLastHandled) > healthUpdateEveryMilliseconds) {
+  if ((millis() - healthUpdateLastHandled) > HEALTH_UPDATE_EVERY_MS) {
     handleHealth();
   }
 }
@@ -1136,7 +1136,7 @@ void handleHealth() {
   publishMQTT(settings.mqttServer.clientTopic + "/ip", WiFi.localIP().toString());
 
   //Publish the Firmware version
-  publishMQTT(settings.mqttServer.clientTopic + "/firmware", (String)firmwareVersion);
+  publishMQTT(settings.mqttServer.clientTopic + "/firmware", FIRMWARE_VERSION);
 
   //Publish the device name
   publishMQTT(settings.mqttServer.clientTopic + "/deviceName", settings.deviceName);
@@ -1181,7 +1181,7 @@ void handleWebGet(String uri){
 
   //Return the firmware version if requested
   if(uri == "/api/firmwareVersion"){
-    webServer.send(200,F("application/json"),"{\"firmwareVersion\":\"" + (String)firmwareVersion + "\"}");
+    webServer.send(200,F("application/json"),"{\"firmwareVersion\":\"" + (String)FIRMWARE_VERSION + "\"}");
     return;
   }
 
@@ -1415,7 +1415,7 @@ void checkFirmwareUpgrade(String url) {
     String firmwareBinURL = jsonDoc["url"];
 
     //Check if the version requested is not the same as the one loaded (yes, we allow back flashing)
-    if ( (String)newFirmwareVersion != (String)firmwareVersion ) {
+    if ( (String)newFirmwareVersion != FIRMWARE_VERSION ) {
       publishMQTT(settings.mqttServer.clientTopic + "/firmwareUpdate", F("Updating"));
       publishMQTT(settings.mqttServer.clientTopic + "/status", F("Updating Firmware"));
 
@@ -1426,7 +1426,7 @@ void checkFirmwareUpgrade(String url) {
         case HTTP_UPDATE_FAILED:
           publishMQTT(settings.mqttServer.clientTopic + "/firmwareUpdate", F("Failed"));
           publishMQTT(settings.mqttServer.clientTopic + "/status", F("Firmware Update Failed"));
-          publishMQTT(settings.mqttServer.clientTopic + "/firmware", (String)firmwareVersion);
+          publishMQTT(settings.mqttServer.clientTopic + "/firmware", FIRMWARE_VERSION);
           break;
 
         case HTTP_UPDATE_NO_UPDATES:
@@ -1434,13 +1434,13 @@ void checkFirmwareUpgrade(String url) {
       }
     }
     else {
-      publishMQTT(settings.mqttServer.clientTopic + "/firmware", (String)firmwareVersion);
+      publishMQTT(settings.mqttServer.clientTopic + "/firmware", FIRMWARE_VERSION);
     }
   }
   else {
     publishMQTT(settings.mqttServer.clientTopic + "/firmwareUpdate", F("Failed"));
     publishMQTT(settings.mqttServer.clientTopic + "/status", F("Firmware Update Failed"));
-    publishMQTT(settings.mqttServer.clientTopic + "/firmware", (String)firmwareVersion);
+    publishMQTT(settings.mqttServer.clientTopic + "/firmware", FIRMWARE_VERSION);
   }
 
   httpClient.end();
