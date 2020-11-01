@@ -10,28 +10,28 @@
 #include "Structures.h"
 #include <FS.h>   // Include the SPIFFS library, download from https://github.com/esp8266/arduino-esp8266fs-plugin
 
-const int firmwareVersion = 30;
+const char* FIRMWARE_VERSION = "1.0";
+const char* PRODUCT_NAME = "FireFly Switch";
 
 /* These are defined by the physical layout of the board by GPIO Number */
-const int PORT_A = 5;
-const int PORT_B = 4;
-const int PORT_C = 14;
-const int PORT_D = 12;
-const int PORT_E = 13;
-const int PORT_F = 15;
-const int FACTORY_RESET = 10;
+#define PORT_A  5
+#define PORT_B 4
+#define PORT_C 14
+#define PORT_D 12
+#define PORT_E 13
+#define PORT_F 15
+#define FACTORY_RESET 10
 
 /* Define the LED style, where blink is binary 0/100%; snore is 0-100-0% */
-const int STYLE_NORMAL = 0;
-const int STYLE_BLINK = 1;
-const int STYLE_SNORE = 2;
-const int STYLE_ROTATE = 3;
+#define STYLE_NORMAL 0
+#define STYLE_BLINK 1
+#define STYLE_SNORE 2
+#define STYLE_ROTATE 3
 
-const int EEPROMLength = 4000;
-const int EEPROMDataBegin = 10; //Reserving the first 10 addresses for provision statuses
+#define EEPROM_DATA_START 6 //Position where the actual EEPROM data begins; Prior to this is used to store provisioning data
+#define HEALTH_UPDATE_EVERY_MS 1680000 //Every 28 minutes
+#define LED_BLINK_MS 750
 
-const unsigned long healthUpdateEveryMilliseconds = 1680000; //Every 28 minutes
-const unsigned long blinkEveryMilliseconds = 750;
 unsigned long healthUpdateLastHandled = 0;
 unsigned long blinkLastHandled = 0;
 
