@@ -843,29 +843,32 @@ int calculateBrightness(int brightnessPercentage) {
 
 }
 
+
 void checkDeviceProvisioned() {
   /*
-     This function will check the EEPROM to see if the device has been provisioned.  If the EEPROM is not "true", it will assume the device has not been provisioned and will
-     set the setting accordingly.
-  */
+   * This function will check the EEPROM to see if the device has been provisioned.  If the EEPROM is not "TRUE", it will assume the device has not been provisioned and will
+   * set the setting accordingly.
+   */
 
-  settings.deviceIsProvisioned = false;
-  return;
+  char eepromData[5];
 
   //Read the EEPROM starting at memory position 0
-  if (EEPROMRead(0) == "true") {
+  EEPROM.get(0, eepromData);
 
-    //The device has been provisioned, set the setting to true
-    settings.deviceIsProvisioned = true;
+   if(strcmp("TRUE", eepromData) == 0){
 
-  } else {
+      //The device has been provisioned, set the setting to true
+      settings.deviceIsProvisioned = true;
+      
+   }else{
 
-    //The device has not been provisioned, set the setting to false
-    settings.deviceIsProvisioned = false;
-
-  }
+      //The device has not been provisioned, set the setting to false
+      settings.deviceIsProvisioned = false;
+    
+   }
 
 }
+
 
 void setupProvisioningMode() {
   /*
@@ -1048,6 +1051,16 @@ void setBrightness(structLED *ptrLed, int illumination, bool isIllumination) {
   analogWrite(ptrLed->pin, ptrLed->illumination);
 
 }
+
+
+void destroyEEPROM(){
+
+  for (unsigned short i = 0 ; i < EEPROM.length() ; i++) {
+    EEPROM.write(i, 0);
+  }
+
+}
+
 
 void EEPROMWrite(String stringToWrite, int startPosition) {
   /*
