@@ -25,19 +25,19 @@ typedef struct structSettings {
 
 };
 
-typedef struct structBrightness {
+typedef struct structIntensity {
   String name; //Max length: 20
-  int illumination;
+  int brightness;
 };
 
 typedef struct structLED {
   int pin;
   String name; //Max length: 20
   String color; //Max length: 20
-  int illumination;
+  int brightness;
   int style;
   int styleData;
-  struct structBrightness definedBrightness[MAXIMUM_DEFINED_BRIGHTNESS];
+  struct structIntensity intensities[MAXIMUM_DEFINED_INTENSITIES];
 };
 
 
@@ -63,15 +63,15 @@ typedef struct _structSettings{
     } mqttServer;
 };
 
-typedef struct _structBrightness {
+typedef struct _structIntensity {
   char name[21]; //Max length: 20
-  unsigned int illumination;
+  unsigned int brightness;
 };
 
 typedef struct _structLED {
   unsigned int pin;
   char name[21]; //Max Length: 20
   char color[21]; //Max Length: 20
-  int countOfDefinedBrightness;
-  struct _structBrightness definedBrightness[MAXIMUM_DEFINED_BRIGHTNESS];
+  int countOfIntensities;
+  struct _structIntensity intensities[MAXIMUM_DEFINED_INTENSITIES];
 };
