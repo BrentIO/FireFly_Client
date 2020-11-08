@@ -7,6 +7,7 @@ const unsigned int MAXIMUM_DEFINED_INTENSITIES = 8;
 typedef struct structSettings {
   bool deviceIsProvisioned;
   String deviceName; //Max length: 16
+  String name; //Max length: 20
 
   struct structNetwork {
     String ssidName; //Max length: 32
@@ -18,7 +19,6 @@ typedef struct structSettings {
     int port;
     String username; //Max length: 32
     String password; //Max length: 32
-    String controlTopic; //Max length: 32
     String clientTopic; //Max length: 32
     String eventTopic; //Max length: 32
   } mqttServer;
@@ -37,6 +37,7 @@ typedef struct structLED {
   int brightness;
   int style;
   int styleData;
+  int countOfIntensities;
   struct structIntensity intensities[MAXIMUM_DEFINED_INTENSITIES];
 };
 
@@ -46,6 +47,8 @@ typedef struct structLED {
 /*******************************************************************************/
 
 typedef struct _structSettings{
+
+    char name[21]; //Max Length: 20
 
     struct _structNetwork{
       char ssidName[33]; //Max length: 32
@@ -58,7 +61,6 @@ typedef struct _structSettings{
       char username[33]; //Max length: 32
       char password[33]; //Max length: 32
       char clientTopic[33]; //Max length: 32
-      char controlTopic[33]; //Max length: 32
       char eventTopic[33]; //Max length: 32
     } mqttServer;
 };
