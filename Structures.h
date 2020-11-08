@@ -6,7 +6,6 @@ const unsigned int MAXIMUM_DEFINED_BRIGHTNESS = 8;
 
 typedef struct structSettings {
   bool deviceIsProvisioned;
-  String friendlyName; //Max length: 32
   String deviceName; //Max length: 16
 
   struct structNetwork {
@@ -47,8 +46,6 @@ typedef struct structLED {
 /*******************************************************************************/
 
 typedef struct _structSettings{
-    char friendlyName[33]; //Max length: 32
-    char deviceName[17]; //Max length: 16
 
     struct _structNetwork{
       char ssidName[33]; //Max length: 32
