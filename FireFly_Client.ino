@@ -14,7 +14,7 @@ const char* FIRMWARE_VERSION = "1.0";
 const char* PRODUCT_NAME = "FireFly Switch";
 
 /* These are defined by the physical layout of the board by GPIO Number */
-#define PORT_A  5
+#define PORT_A 5
 #define PORT_B 4
 #define PORT_C 14
 #define PORT_D 12
