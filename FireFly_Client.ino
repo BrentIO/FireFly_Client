@@ -547,18 +547,21 @@ void handleMQTTMessageReceived(String topic, String payload) {
   //See if the payload requests a bootstrap update check
   if (topic == settings.mqttServer.clientTopic + "/bootstrap/set") {
 
+    //Success, restart to pick up changes
+    turnOffAllLEDs();
+
     publishMQTT(settings.mqttServer.clientTopic + "/status", F("BOOTSTRAPPING"));
 
-    if(retrieveBootstrap(payload) == true){
+    if(retrieveBootstrap(payload) == false){
 
       //Publish that the bootstrap failed
       publishMQTT(settings.mqttServer.clientTopic + "/status", F("BOOTSTRAP_FAILED"));
       publishMQTT(settings.mqttServer.clientTopic + "/errorMessage", errorMessage);
 
-    }else{
+      //Turn on the LED's again
+      restoreAllLEDs();
 
-      //Success, restart to pick up changes
-      turnOffAllLEDs();
+    }else{
 
       publishMQTT(settings.mqttServer.clientTopic + "/status", F("RESTARTING"));
 
