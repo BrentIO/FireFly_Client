@@ -45,6 +45,8 @@ PubSubClient mqttClient(espClient); //MQTT client binding to the ESP8266 WiFi
 ESP8266WebServer webServer(80); //Web server client to handle provisioning
 ESP8266HTTPUpdateServer httpUpdater; //HTTP server client to handle OTA updates
 
+String errorMessage = "";
+
 
 void setup() {
 
@@ -1195,6 +1197,12 @@ void handleWebGet(String uri){
   //Return the firmware version if requested
   if(uri == "/api/firmwareVersion"){
     webServer.send(200,F("application/json"),"{\"firmwareVersion\":\"" + (String)FIRMWARE_VERSION + "\"}");
+    return;
+  }
+
+  //Return any error messages version if requested
+  if(uri == "/api/errorMessage"){
+    webServer.send(200,F("application/json"),"{\"errorMessage\":\"" + errorMessage + "\"}");
     return;
   }
 
