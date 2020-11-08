@@ -603,6 +603,7 @@ void handleEventTopic(String topic, String payload) {
 
   String messageActor;
 
+  //Get the button name from the topic
   messageActor = topic.substring(topic.lastIndexOf("/") + 1);
 
   //Find the button
