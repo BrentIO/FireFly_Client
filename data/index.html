@@ -61,6 +61,36 @@
                     }
 
                 });
+
+                //Get the error message from the client, if one exists
+                $.ajax({
+
+                    type: 'GET',
+                    url: "./api/errorMessage",
+
+                    success: function(data) {
+
+                        errorMessage = data['errorMessage'];
+
+                        if(errorMessage != ""){
+                            document.getElementById("errorMessage").style.display = 'block';
+                            document.getElementById("errorMessage").innerHTML = document.getElementById("errorMessage").innerHTML + errorMessage +"<br>";
+                        }
+                       
+                    },
+
+                    error: function(data){
+                        document.getElementById("submitButton").disabled = true;
+                        document.getElementById("errorMessage").style.display = 'block';
+                        document.getElementById("errorMessage").innerHTML = document.getElementById("errorMessage").innerHTML + "Unable to retrieve error messages.<br>";
+                        firmwareVersion = "0"
+                    },
+
+                    complete: function(){
+                        setFirmwareVersion();
+                    }
+
+                    });
             })
 
             function setDeviceName(){
@@ -116,7 +146,7 @@
         <div class="container">
             <h1 class="text-center">FireFly Switch</h1>
             <h4 class="text-center"><div id="deviceName"></div>
-            <div id="errorMessage" class="bg-danger text-center text-danger" style="display:none;border-radius: 5px;"></div></h4>
+            <div id="errorMessage" class="bg-danger text-center text-danger" style="display:none;border-radius: 5px;margin-top: 15px"></div></h4>
             <br>
         <div class="form-group">
             <form name="frmMain" action="./bootstrap" method="post">
