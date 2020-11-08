@@ -60,7 +60,7 @@ void setup() {
 
     if (settings.deviceIsProvisioned == true) {
 
-      EEPROMWrite("false", 0);
+      EEPROM.put(0, "FALSE");
       settings.deviceIsProvisioned = false;
     }
 
@@ -416,7 +416,7 @@ void handleGlobalEventTopic(String topic, String payload) {
   /* Handles all of the business logic */
 
   //Create a jsonDocument object to deserialize into
-  DynamicJsonDocument jsonDoc(EEPROMLength);
+  DynamicJsonDocument jsonDoc(0);
 
   //Deserialize the response
   auto jsonParseError = deserializeJson(jsonDoc, payload);
@@ -1063,78 +1063,86 @@ void destroyEEPROM(){
 
 }
 
+void writeNetworkToEEPROM(){
 
-void EEPROMWrite(String stringToWrite, int startPosition) {
-  /*
-     This function writes a string of data to the EEPROM beginning at a specified address.  It is sandwiched between two non-printable ASCII characters (2/STX and 3/ETX)
-     to deliniate where the data begins and ends, which is used when reading the data.
-  */
+  /* Writes the settings out to the EEPROM, which starts at position EEPROM_DATA_START. */
 
-  //Sandwich the data with STX and ETX so we can keep track of the data
-  stringToWrite = char(02) + stringToWrite + char(03);
+  //Create temporary structures
+  struct _structSettings _settings;
 
-  //Set the EEPROM size
-  EEPROM.begin(EEPROMLength);
+  strcpy(_settings.network.ssidName, settings.network.ssidName.substring(0, 32).c_str());
+  strcpy(_settings.network.wpaKey, settings.network.wpaKey.substring(0, 32).c_str());
 
-  //Write a start of text and end of text around the actual text
-  for (int i = 0; i < stringToWrite.length(); ++i)
-  {
-    //Write the data to the EEPROM buffer
-    EEPROM.write((startPosition + i), stringToWrite[i]);
-  }
+  strcpy(_settings.mqttServer.serverName, settings.mqttServer.serverName.substring(0, 32).c_str());
+  _settings.mqttServer.port = settings.mqttServer.port;
+  strcpy(_settings.mqttServer.username, settings.mqttServer.username.substring(0, 32).c_str());
+  strcpy(_settings.mqttServer.password, settings.mqttServer.password.substring(0, 32).c_str());
+  strcpy(_settings.mqttServer.clientTopic, settings.mqttServer.clientTopic.substring(0, 32).c_str());
+  strcpy(_settings.mqttServer.controlTopic, settings.mqttServer.controlTopic.substring(0, 32).c_str());
+  strcpy(_settings.mqttServer.eventTopic, settings.mqttServer.eventTopic.substring(0, 32).c_str());
 
-  //Commit the EEPROM
-  EEPROM.commit();
+  //Put the data in the EEPROM
+  EEPROM.put(EEPROM_DATA_START, _settings);
+
+  //Set the device as provisioned
+  EEPROM.put(0, "TRUE");
 
 }
 
+void readNetworkFromEEPROM(){
 
-String EEPROMRead(int startPosition) {
-  /*
-     This function reads EEPROM data.  It is sandwiched between two non-printable ASCII characters (2/STX and 3/ETX) to deliniate where the data begins and ends.
-     Becasuse the EEPROM length is longer than the data contained, we can only reliably read the data between the two non-printable characters, as there could be junk data left
-     after the data string in the EEPROM.  After the end of the data feed is found, we automatically advance to the end to force the function to stop reading (we could have another
-     STX later on that we don't want to pick up).
-  */
+  /* Reads the settings from EEPROM, which starts at position EEPROM_DATA_START. */
 
-  byte value;
-  String strReturnValue = "";
-  bool isProcessingData = false;
+  struct _structSettings _settings;
 
-  EEPROM.begin(EEPROMLength);
+  //Get the data from the EEPROM
+  EEPROM.get(EEPROM_DATA_START, _settings);
 
-  //Start reading the EEPROM where the data begins until the EEPROM length
-  for (int i = startPosition; i < EEPROMLength; i++) {
+  settings.network.ssidName = _settings.network.ssidName;
+  settings.network.wpaKey = _settings.network.wpaKey;
 
-    // read a byte from the current address of the EEPROM
-    value = EEPROM.read(i);
+  settings.mqttServer.serverName = _settings.mqttServer.serverName;
+  settings.mqttServer.port = _settings.mqttServer.port;
+  settings.mqttServer.username = _settings.mqttServer.username;
+  settings.mqttServer.password = _settings.mqttServer.password;
+  settings.mqttServer.clientTopic = _settings.mqttServer.clientTopic;
+  settings.mqttServer.controlTopic = _settings.mqttServer.controlTopic;
+  settings.mqttServer.eventTopic = _settings.mqttServer.eventTopic;
 
-    //See what the value of this byte is
-    switch (value) {
+}
 
-      case 2:
-        //This byte is the beginning of the data, start saving information at this point
-        isProcessingData = true;
-        break;
+void writeLEDsToEEPROM(){
+    /* 
+    Writes the output count and outputs to the EEPROM, which 
+    starts at position after the network. */
 
-      case 3:
-        //This byte is the end of the data, stop saving information at this point
-        isProcessingData = false;
+    unsigned int eepromPosition = sizeof(_structSettings) + EEPROM_DATA_START;
 
-        //Set the address to the end of the EEPROM so we will break out of the WHILE loop
-        i = EEPROMLength;
-        break;
+    //Reset the number of LED's
+    countOfLEDs = 0;
 
-      default:
+    //Get the LED count
+    EEPROM.get(eepromPosition, countOfLEDs);
 
-        //If the character is printable AND we are processing a word, store the character to the string
-        if (value >= 32 && value <= 127 && isProcessingData == true) {
-          strReturnValue = strReturnValue + String(char(value));
-        }
-    }
-  }
+    //Set the new EEPROM position
+    eepromPosition += sizeof(countOfLEDs);
 
-  return strReturnValue;
+    //Read each LED into RAM
+    for(unsigned int i = 0; i < countOfLEDs; i++){
+
+      struct _structLED _tmpLED; //Temporary object of known size
+
+      EEPROM.get(eepromPosition, _tmpLED);
+
+      //Set the new EEPROM position
+      eepromPosition += sizeof(_structLED);
+
+      //Build the final object with the data from the EEPROM
+      leds[i].pin = _tmpLED.pin;
+      leds[i].name = _tmpLED.name;
+      leds[i].color = _tmpLED.color;
+
+    } 
 
 }
 
@@ -1284,72 +1292,126 @@ void wwwHandleSubmit() {
 }
 
 
-boolean retrieveBootstrap(String bootstrapURL) {
-
-  Serial.println("Attempting to retrieve bootstrap");
+boolean retrieveBootstrap(String url) {
 
   HTTPClient httpClient;
 
-  httpClient.begin(bootstrapURL);
+  //Supports names of 20 characters, average size of other settings at 128 characters https://arduinojson.org/v6/assistant/
+  const size_t capacity = 6*JSON_ARRAY_SIZE(4) + JSON_ARRAY_SIZE(6) + 31*JSON_OBJECT_SIZE(2) + 7*JSON_OBJECT_SIZE(3) + JSON_OBJECT_SIZE(4) + JSON_OBJECT_SIZE(5) + 2090;
 
-  //See if we were successful in retrieving the bootstrap
-  if (httpClient.GET() == HTTP_CODE_OK) {
+  //Attempt to connect to the URL
+  httpClient.begin(url);
 
-      Serial.println(httpClient.getString());
+  int responseCode = httpClient.GET();
 
-    //Write the response to the EEPROM
-    //EEPROMWrite(httpClient.getString(), EEPROMDataBegin);
+  //See if we get an HTTP 200/OK response
+  if (responseCode == 200 ) {
 
-    //Set the provision status
-    //EEPROMWrite("true", 0);
+    //Create a JSON doc to use
+    DynamicJsonDocument jsonDoc(capacity);
+
+    // Parse JSON object
+    DeserializationError jsonError = deserializeJson(jsonDoc, httpClient.getStream());
+
+    if (jsonError) {
+      httpClient.end();
+      errorMessage = "Error parsing bootstrap: " + (String)jsonError.c_str();
+      return false;
+    }
 
     httpClient.end();
 
-    //Re-Read the EEPROM into RAM
-    //readEEPROMToRAM();
+    //Success
+    errorMessage = "";
 
-    //return true;
-    return false;
+    //Populate the settings from the bootstrap
 
-  } else {
 
-    Serial.println("Server returned " + httpClient.GET());
 
+
+    return true;
+
+  }else{
+
+    errorMessage = "Bootstrap server response code was unexpected (" + (String)responseCode + ")";
+
+    //Kill the client, we didn't get 200 back
+    httpClient.end();
     return false;
   }
 
 }
 
+void bootstrap(const DynamicJsonDocument& jsonDoc){
+
+  //Set the network data
+  settings.network.ssidName = jsonDoc["network"]["ssid"].as<String>();
+  settings.network.wpaKey = jsonDoc["network"]["key"].as<String>();
+
+  //Set the MQTT data
+  settings.mqttServer.serverName = jsonDoc["mqtt"]["serverName"].as<String>();
+  settings.mqttServer.port = jsonDoc["mqtt"]["port"].as<int>();
+  settings.mqttServer.username = jsonDoc["mqtt"]["username"].as<String>();
+  settings.mqttServer.password = jsonDoc["mqtt"]["password"].as<String>();
+  settings.mqttServer.clientTopic = jsonDoc["mqtt"]["topics"]["client"].as<String>();
+  settings.mqttServer.controlTopic = jsonDoc["mqtt"]["topics"]["control"].as<String>();
+  settings.mqttServer.eventTopic = jsonDoc["mqtt"]["topics"]["event"].as<String>();
+
+  //Destroy the list of LED's
+  countOfLEDs = 0;
+
+  //Cycle through each LED in the JSON doc
+  for(int i = 0; i < jsonDoc["buttons"].size(); i++){
+
+    leds[i].pin = enumPorts(jsonDoc["buttons"][i]["port"].as<String>());
+    leds[i].name = jsonDoc["buttons"][i]["name"].as<String>();
+    leds[i].color = jsonDoc["buttons"][i]["color"].as<String>();
+
+    //Get each intensity from the JSON doc
+    for(int j=0; j < jsonDoc["buttons"][i]["intensities"].size(); j++){
+      leds[i].intensities[j].name = jsonDoc["buttons"][i]["intensities"]["name"].as<String>();
+      leds[i].intensities[j].brightness = jsonDoc["buttons"][i]["intensities"]["brightness"].as<int>();
+    }
+  }
+}
+
+
 void attemptProvision(String SSID, String wpaKey, String bootstrapURL) {
 
-  Serial.println("Attempting provision\nSSID: [" + SSID + "]\nwpaKey: [" + wpaKey + "]\nBootstrap URL: [" + bootstrapURL + "]");
+  //Turn off all of the LED's
+  turnOffAllLEDs();
 
   //Kill the soft AP
   WiFi.softAPdisconnect(true);
-  WiFi.mode(WIFI_STA);
+  WiFi.disconnect(true);
+
   delay(500);
 
-  if (WiFi.status() != WL_CONNECTED) {
-    WiFi.begin(SSID.c_str(), wpaKey.c_str());
-  }
+  WiFi.mode(WIFI_STA);
+
+  delay(500);
+
+  WiFi.begin(SSID.c_str(), wpaKey.c_str());
 
   //Remember the start time
   unsigned long timeStartConnect = millis();
 
   //Print output while waiting for WiFi to connect
   while (WiFi.status() != WL_CONNECTED) {
+    
     delay(500);
 
     //Set a timer for 30 seconds to connect
     if (millis() - timeStartConnect > 30000) {
-
+      
       //Disconnect the WiFi
       WiFi.disconnect();
 
-      //Restart the provisioning server
-      setupProvisioningMode();
+      //Set an error message
+      errorMessage = "Unable to attach to WiFi";
 
-      Serial.println("Unable to attach to WiFi");
+      //Restart provisioning mode
+      setupProvisioningMode();
 
       //Exit this
       return;
@@ -1359,18 +1421,21 @@ void attemptProvision(String SSID, String wpaKey, String bootstrapURL) {
 
   if (retrieveBootstrap(bootstrapURL) == true) {
 
-    turnOffAllLEDs();
-
     //Ensure the EEPROM has time to finish writing and closing the client
     delay(1000);
 
-    //Restart
+    //Succcess, Restart to get the configuration from EEPROM properly
     ESP.restart();
 
   } else {
 
-    //Restart on failure
-    ESP.restart();
+    delay(1000);
+
+    //Restart provisioning mode
+    setupProvisioningMode();
+
+    //Exit this
+    return;
 
   }
 
@@ -1421,7 +1486,7 @@ void checkFirmwareUpgrade(String url) {
     String jsonServerResponse = httpClient.getString();
 
     //Create a jsonDocument object to deserialize into
-    StaticJsonDocument<EEPROMLength> jsonDoc;
+    StaticJsonDocument<0> jsonDoc;
 
     //Deserialize the response
     auto jsonParseError = deserializeJson(jsonDoc, jsonServerResponse);
