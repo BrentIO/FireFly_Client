@@ -147,7 +147,7 @@ void blinkLEDs() {
 
     if (leds[i].style == STYLE_BLINK) {
 
-      if (leds[i].illumination == 0) {
+      if (leds[i].brightness == 0) {
 
         //Turn on the LED to the pre-last value
         setBrightness(&leds[i], leds[i].styleData);
@@ -176,29 +176,29 @@ void snoreLEDs() {
       //Determine if we are increasing (not zero) or decreasing (zero)
       if (leds[i].styleData != 0) {
 
-        //Increment the illumination
-        leds[i].illumination++;
+        //Increment the brightness
+        leds[i].brightness++;
 
         //If we are now greater than PWMRANGE, switch the direction for the next iteration
-        if (leds[i].illumination > PWMRANGE) {
+        if (leds[i].brightness > PWMRANGE) {
           leds[i].styleData = 0;
         }
 
         //Set the new value
-        setBrightness(&leds[i], leds[i].illumination, true);
+        setBrightness(&leds[i], leds[i].brightness, true);
 
       } else {
 
-        //Decrement the illumination
-        leds[i].illumination--;
+        //Decrement the brightness
+        leds[i].brightness--;
 
         //If we are now less than 10, switch the direction for the next iteration; Less than 10 makes the LED flash off
-        if (leds[i].illumination < 10) {
+        if (leds[i].brightness < 10) {
           leds[i].styleData = 1;
         }
 
         //Set the new value
-        setBrightness(&leds[i], leds[i].illumination, true);
+        setBrightness(&leds[i], leds[i].brightness, true);
 
       }
     }
@@ -216,7 +216,7 @@ void rotateLEDs(){
   //Find any LED's that should be on
   for (int i = 0; i < countOfLEDs; i++) {
 
-    if(leds[i].illumination == PWMRANGE){
+    if(leds[i].brightness == PWMRANGE){
 
       //Turn off this LED
       setBrightness(&leds[i], int(PWMRANGE/16));
@@ -351,10 +351,10 @@ void handleEventTopic(String topic, String payload) {
       //See if we are opening or closing
       if (payload == "ON") {
 
-        //Remember the current illumination value
-        leds[i].styleData = leds[i].illumination;
+        //Remember the current brightness value
+        leds[i].styleData = leds[i].brightness;
 
-        //Set the illumination to OFF
+        //Set the brightness to OFF
         setBrightness(&leds[i], "OFF");
       }
 
@@ -375,8 +375,8 @@ void handleEventTopic(String topic, String payload) {
 
       if (payload == "MINIMUM" || payload == "MAXIMUM") {
 
-        //Remember the current illumination value
-        leds[i].styleData = leds[i].illumination;
+        //Remember the current brightness value
+        leds[i].styleData = leds[i].brightness;
 
         setBrightness(&leds[i], F("OFF"));
 
@@ -454,10 +454,10 @@ void handleGlobalEventTopic(String topic, String payload) {
         //See if we are opening or closing
         if (messageValue == "CLOSED") {
 
-          //Remember the current illumination value
-          leds[i].styleData = leds[i].illumination;
+          //Remember the current brightness value
+          leds[i].styleData = leds[i].brightness;
 
-          //Set the illumination to OFF
+          //Set the brightness to OFF
           setBrightness(&leds[i], F("OFF"));
         }
 
@@ -491,7 +491,7 @@ void handleGlobalEventTopic(String topic, String payload) {
           leds[i].style = STYLE_NORMAL;
         }
 
-        //Set the illumination to the numeric value
+        //Set the brightness to the numeric value
         setBrightness(&leds[i], calculateBrightness((int)jsonDoc["value"]));
       }
 
@@ -514,7 +514,7 @@ void handleGlobalEventTopic(String topic, String payload) {
           leds[i].style = STYLE_NORMAL;
         }
 
-        //Set the illumination to the numeric value
+        //Set the brightness to the numeric value
         setBrightness(&leds[i], (String)messageValue);
       }
 
@@ -536,7 +536,7 @@ void handleGlobalEventTopic(String topic, String payload) {
         if (leds[i].style != STYLE_BLINK) {
 
           //Store the existing illuminatoin value
-          leds[i].styleData = leds[i].illumination;
+          leds[i].styleData = leds[i].brightness;
           leds[i].style = STYLE_BLINK;
 
         } else {
@@ -587,7 +587,7 @@ void handleGlobalEventTopic(String topic, String payload) {
           leds[i].style = STYLE_NORMAL;
         }
 
-        //Set the illumination to the numeric value
+        //Set the brightness to the numeric value
         setBrightness(&leds[i], calculateBrightness((int)jsonDoc["value"]));
       }
 
@@ -610,7 +610,7 @@ void handleGlobalEventTopic(String topic, String payload) {
           leds[i].style = STYLE_NORMAL;
         }
 
-        //Set the illumination to the numeric value
+        //Set the brightness to the numeric value
         setBrightness(&leds[i], (String)messageValue);
       }
 
@@ -632,7 +632,7 @@ void handleGlobalEventTopic(String topic, String payload) {
         if (leds[i].style != STYLE_BLINK) {
 
           //Store the existing illuminatoin value
-          leds[i].styleData = leds[i].illumination;
+          leds[i].styleData = leds[i].brightness;
 
           leds[i].style = STYLE_BLINK;
 
@@ -683,7 +683,7 @@ void handleGlobalEventTopic(String topic, String payload) {
         leds[i].style = STYLE_NORMAL;
       }
 
-      //Set the illumination to the numeric value
+      //Set the brightness to the numeric value
       setBrightness(&leds[i], calculateBrightness((int)jsonDoc["value"]));
 
       //Set the ON brightness to the received message when blinking
@@ -702,7 +702,7 @@ void handleGlobalEventTopic(String topic, String payload) {
         leds[i].style = STYLE_NORMAL;
       }
 
-      //Set the illumination to the numeric value
+      //Set the brightness to the numeric value
       setBrightness(&leds[i], (String)messageValue);
 
       //Set the ON brightness to the received message when blinking
@@ -722,7 +722,7 @@ void handleGlobalEventTopic(String topic, String payload) {
       if (leds[i].style != STYLE_BLINK) {
 
         //Store the existing illuminatoin value
-        leds[i].styleData = leds[i].illumination;
+        leds[i].styleData = leds[i].brightness;
 
         leds[i].style = STYLE_BLINK;
 
@@ -1009,9 +1009,9 @@ void setupLEDs(void) {
 
 void setBrightness(structLED *ptrLed, int brightness) {
 
-  ptrLed->illumination = brightness;
+  ptrLed->brightness = brightness;
 
-  analogWrite(ptrLed->pin, ptrLed->illumination);
+  analogWrite(ptrLed->pin, ptrLed->brightness);
 }
 
 
@@ -1026,31 +1026,31 @@ void setBrightness(structLED *ptrLed, String intensity) {
 
     if (ptrLed->definedBrightness[i].name == intensity) {
 
-      ptrLed->illumination = calculateBrightness(ptrLed->definedBrightness[i].illumination);
+      ptrLed->brightness = calculateBrightness(ptrLed->definedBrightness[i].brightness);
 
     }
   }*/
 
   //Also consider binary ON (100) and OFF (0)
   if (intensity == "OFF") {
-    ptrLed->illumination = calculateBrightness(0);
+    ptrLed->brightness = calculateBrightness(0);
   }
 
   if (intensity == "ON") {
-    ptrLed->illumination = calculateBrightness(100);
+    ptrLed->brightness = calculateBrightness(100);
   }
 
   //Set the brightness, which will also do nothing if the intensity isn't defined
-  analogWrite(ptrLed->pin, ptrLed->illumination);
+  analogWrite(ptrLed->pin, ptrLed->brightness);
 
 }
 
 
-void setBrightness(structLED *ptrLed, int illumination, bool isIllumination) {
+void setBrightness(structLED *ptrLed, int brightness, bool isBrightness) {
 
-  ptrLed->illumination = illumination;
+  ptrLed->brightness = brightness;
 
-  analogWrite(ptrLed->pin, ptrLed->illumination);
+  analogWrite(ptrLed->pin, ptrLed->brightness);
 
 }
 
@@ -1385,7 +1385,7 @@ void turnOffAllLEDs() {
     //Remember the current brightness setting, except blinking which could be temporarily off
     if (leds[i].style != STYLE_BLINK) {
 
-      leds[i].styleData = leds[i].illumination;
+      leds[i].styleData = leds[i].brightness;
 
     }
     //Turn off the LED
@@ -1400,7 +1400,7 @@ void restoreAllLEDs() {
   //Turn off the LEDs
   for (int i = 0; i < countOfLEDs; i++) {
 
-    //Set the illumination to the previous value
+    //Set the brightness to the previous value
     setBrightness(&leds[i], leds[i].styleData);
   }
 

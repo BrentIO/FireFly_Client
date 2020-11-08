@@ -1,4 +1,4 @@
-const unsigned int MAXIMUM_DEFINED_BRIGHTNESS = 8;
+const unsigned int MAXIMUM_DEFINED_INTENSITIES = 8;
 
 /*******************************************************************************/
 /*        Structures used within this program in section below                 */
