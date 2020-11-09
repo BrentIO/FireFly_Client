@@ -609,6 +609,9 @@ void handleEventTopic(String topic, String payload) {
   //Get the button name from the topic
   messageActor = topic.substring(topic.lastIndexOf("/") + 1);
 
+  //Fix the payload to be toUpperCase
+  payload.toUpperCase();
+
   //Find the button
   for (int i = 0; i < countOfLEDs; i++) {
 
