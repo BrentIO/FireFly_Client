@@ -648,18 +648,22 @@ void handleEventTopic(String topic, String payload) {
         leds[i].styleData = leds[i].brightness;
 
         //Flash the LED off then to maximum brightness three times quickly
-        for(int flashCount = 0; flashCount < 3; flashCount++){
+        for(int flashCount = 0; flashCount < 5; flashCount++){
+
+          //Turn the LED to maximum brightness briefly
+          setBrightness(&leds[i], F("ON"));
+
+          delay(100);
 
           setBrightness(&leds[i], F("OFF"));
 
           delay(100);
 
-          //Turn the LED to maximum brightness briefly
-          setBrightness(&leds[i], F("MAXIMUM"));
-
-          delay(100);
-
         }
+
+        //Reset the brightness value
+        setBrightness(&leds[i], leds[i].styleData);
+        
       }
     }
   }
