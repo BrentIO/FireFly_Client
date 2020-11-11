@@ -439,6 +439,14 @@ void setBrightness(structLED *ptrLed, String intensity) {
     ptrLed->brightness = calculateBrightness(100);
   }
 
+  //Remember the named intensity if it isn't ON or OFF
+  if(intensity != F("ON") && intensity != F("OFF")){
+
+    ptrLed->activeNamedIntensity = intensity;
+
+  }
+  
+
   //Set the brightness, which will also do nothing if the intensity isn't defined
   analogWrite(ptrLed->pin, ptrLed->brightness);
 
