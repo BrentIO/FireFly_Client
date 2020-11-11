@@ -1726,6 +1726,9 @@ void checkFirmwareUpgrade(String url) {
     Retrieves a new firmware from the given URL
   */
 
+  //Turn off the LED's
+  turnOffAllLEDs();
+  
   publishMQTT(settings.mqttServer.clientTopic + "/status", F("UPGRADING"));
 
   //Attempt to retrieve the firmware and perform the update
@@ -1733,10 +1736,20 @@ void checkFirmwareUpgrade(String url) {
 
   switch (firmwareUpdateResponse) {
     case HTTP_UPDATE_FAILED:
+
+      //Turn the LED's back on
+      restoreAllLEDs();
+
+      //Send a message indicating the failure
       publishMQTT(settings.mqttServer.clientTopic + "/status", F("UPDATE_FAILED"));
       break;
 
     case HTTP_UPDATE_NO_UPDATES:
+
+      //Turn the LED's back on
+      restoreAllLEDs();
+
+      //Send a message indicating the update was not necessary
       publishMQTT(settings.mqttServer.clientTopic + "/status", F("ONLINE"));
       publishMQTT(settings.mqttServer.clientTopic + "/errorMessage", "");
       break;
