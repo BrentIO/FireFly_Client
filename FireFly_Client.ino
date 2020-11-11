@@ -401,7 +401,7 @@ void rotateLEDs(){
 void setBrightness(structLED *ptrLed, int brightness) {
 
   /*
-    Sets the LED's brightness to a given brightness number
+    Sets the LED's brightness to a given brightness number, as a PWM value
   */
 
   ptrLed->brightness = brightness;
