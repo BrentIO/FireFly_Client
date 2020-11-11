@@ -647,11 +647,8 @@ void handleEventTopic(String topic, String payload) {
       //See if the controller is telling us the button has been pressed too many times
       if (payload == F("MINIMUM") || payload == F("MAXIMUM")) {
 
-        //Remember the current brightness value
-        leds[i].styleData = leds[i].brightness;
-
         //Flash the LED off then to maximum brightness three times quickly
-        for(int flashCount = 0; flashCount < 5; flashCount++){
+        for(int flashCount = 0; flashCount < 3; flashCount++){
 
           //Turn the LED to maximum brightness briefly
           setBrightness(&leds[i], F("ON"));
