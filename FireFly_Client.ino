@@ -10,7 +10,7 @@
 #include <FS.h>   // Include the SPIFFS library, download from https://github.com/esp8266/arduino-esp8266fs-plugin
 #include "Structures.h"
 
-const char* FIRMWARE_VERSION = "1.0";
+const char* FIRMWARE_VERSION = "1.12";
 const char* PRODUCT_NAME = "FireFly Switch";
 
 /* These are defined by the physical layout of the board by GPIO Number */
