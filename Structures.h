@@ -37,7 +37,6 @@ typedef struct structLED {
   int brightness;
   int style;
   int styleData;
-  String activeNamedIntensity;
   int countOfIntensities;
   struct structIntensity intensities[MAXIMUM_DEFINED_INTENSITIES];
 };

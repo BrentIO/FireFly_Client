@@ -10,7 +10,7 @@
 #include <FS.h>   // Include the SPIFFS library, download from https://github.com/esp8266/arduino-esp8266fs-plugin
 #include "Structures.h"
 
-const char* FIRMWARE_VERSION = "1.12";
+const char* FIRMWARE_VERSION = "1.14";
 const char* PRODUCT_NAME = "FireFly Switch";
 
 /* These are defined by the physical layout of the board by GPIO Number */
@@ -438,14 +438,6 @@ void setBrightness(structLED *ptrLed, String intensity) {
   if (intensity == F("ON")) {
     ptrLed->brightness = calculateBrightness(100);
   }
-
-  //Remember the named intensity if it isn't ON or OFF
-  if(intensity != F("ON") && intensity != F("OFF")){
-
-    ptrLed->activeNamedIntensity = intensity;
-
-  }
-  
 
   //Set the brightness, which will also do nothing if the intensity isn't defined
   analogWrite(ptrLed->pin, ptrLed->brightness);
