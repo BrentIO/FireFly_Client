@@ -23,9 +23,9 @@ FireFly Client uses an ESP8266 over WiFi and supports up to 6 buttons being cont
 
 <sup>1</sup> To reset to provisioning mode, short to ground.
 
-The Gerber, BOM, and Pick & Place files area all located in the <a href="tree/master/hardware/PCB">PCB</a> folder.
+The Gerber, BOM, and Pick & Place files area all located in the [PCB](/hardware/PCB) folder.
 
-Custom faceplates to support a 16mm button in a standard US electrical box are in the <a href="tree/master/hardware/faceplates">faceplates</a> folder.  Note, you must print both the faceplate and the matching adapter plate.
+Custom faceplates to support a 16mm button in a standard US electrical box are in the [faceplates](hardware/faceplates) folder.  Note, you must print both the faceplate and the matching adapter plate.
 
 ## Reset to Defaults
 Grounding pin reset pin will cause the EEPROM to be marked as not provisioned and enable the user to re-enter provisioning mode.
@@ -42,7 +42,7 @@ After installation, the ESP8266 will boot into a provisioning state, having crea
 You must also flash the SPIFFs, which contains assets for the provisioning server.  The easiest way to flash the SPIFFs is using ESP8266 filesystem uploader from https://github.com/esp8266/arduino-esp8266fs-plugin.
 
 ## Installation from Release Package
-You can also install a pre-compiled version by downloading one of the <a href="./releases">releases</a>.  To flash the ESP8266, install ESPTool from https://github.com/espressif/esptool, if it is not already installed on your system.
+You can also install a pre-compiled version by downloading one of the [releases](/releases).  To flash the ESP8266, install ESPTool from https://github.com/espressif/esptool, if it is not already installed on your system.
 
 Flashing the bootloader and the SPIFFs can be done in a single command:
 ```python3 esptool.py --port {PORT} --baud 115200 write_flash 0x00000 {BOOTLOADER_FILE} 0x00200000 /{SPIFF_FILE}```
