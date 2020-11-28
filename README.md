@@ -104,8 +104,7 @@ Post to topic: `/button/S4B3`
 ```
 {
     "type": "EVENT",
-    "value": "OPEN",
-    "actor": "LIVING_ROOM_1"
+    "value": "OPEN"
 }
 ```
 
@@ -114,8 +113,7 @@ Post to topic: `/button/LIVING_ROOM_1`
 ```
 {
     "type": "SWITCH_NAMED",
-    "value": "DAYTIME",
-    "actor": "LIVING_ROOM_1"
+    "value": "DAYTIME"
 }
 ```
 
@@ -125,8 +123,7 @@ Post to topic: `/button/S4B3`
 ```
 {
     "type": "BUTTON_NUMERIC",
-    "value": 70,
-    "actor": "S4B3"
+    "value": 70
 }
 ```
 
@@ -135,8 +132,7 @@ Post to topic: `/button/S4B3`
 ```
 {
     "type": "BUTTON_NAMED",
-    "value": "DAYTIME",
-    "actor": "S4B3"
+    "value": "DAYTIME"
 }
 ```
 
@@ -144,8 +140,7 @@ Post to topic: `/button/S4B3`
 Post to topic: `/button/S4B3`
 ```
 {
-    "type": "BUTTON_SNORE",
-    "actor": "LIVING_ROOM_1"
+    "type": "BUTTON_SNORE"
 }
 ```
 
@@ -153,8 +148,7 @@ Post to topic: `/button/S4B3`
 Post to topic: `/button/S4B3`
 ```
 {
-    "type": "BUTTON_BLINK",
-    "actor": "LIVING_ROOM_1"
+    "type": "BUTTON_BLINK"
 }
 ```
 
