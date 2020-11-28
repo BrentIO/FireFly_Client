@@ -42,7 +42,7 @@ After installation, the ESP8266 will boot into a provisioning state, having crea
 You must also flash the SPIFFs, which contains assets for the provisioning server.  The easiest way to flash the SPIFFs is using ESP8266 filesystem uploader from https://github.com/esp8266/arduino-esp8266fs-plugin.
 
 ## Installation from Release Package
-You can also install a pre-compiled version by downloading one of the [releases](/releases).  To flash the ESP8266, install ESPTool from https://github.com/espressif/esptool, if it is not already installed on your system.
+You can also install a pre-compiled version by downloading one of the [releases](https://github.com/BrentIO/FireFly_Client/releases).  To flash the ESP8266, install ESPTool from https://github.com/espressif/esptool, if it is not already installed on your system.
 
 Flashing the bootloader and the SPIFFs can be done in a single command:
 ```python3 esptool.py --port {PORT} --baud 115200 write_flash 0x00000 {BOOTLOADER_FILE} 0x00200000 /{SPIFF_FILE}```
